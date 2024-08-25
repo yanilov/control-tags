@@ -1,0 +1,18 @@
+[package]
+name = "approval"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { workspace = true }
+futures = { workspace = true }
+aws-sdk-iam = { workspace = true }
+aws-sdk-sts = { workspace = true }
+serde = { workspace = true }
+
+aws-smithy-types-convert = { version = "0.60.8", features = [
+    "convert-streams",
+] }
+const_format = "0.2.32"
+
+thiserror = "1.0.50"
