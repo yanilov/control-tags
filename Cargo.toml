@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["rust/approval", "rust/cli", "rust/retention-lambda"]
+
+[workspace.dependencies]
+futures = "0.3.30"
+aws-config = "1.5.5"
+aws-sdk-iam = "1.41.0"
+aws-sdk-sts = "1.39.0"
+chrono = "0.4.31"
+serde = {version="1.0.208", features=["derive"]}
+serde_json = "1.0.127"
+
+[workspace.lints.clippy]
+mod_module_files = "deny"
