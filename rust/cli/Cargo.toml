@@ -1,0 +1,18 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.75"
+aws-arn = "0.3.1"
+aws-config = { workspace = true }
+aws-sdk-iam = {workspace = true}
+aws-sdk-sts = {workspace = true}
+chrono = "0.4.31"
+clap = { version = "4.4.8", features = ["derive"] }
+
+thiserror = "1.0.50"
+tokio = {version = "1.39.3", features = ["full"]}
+
+approval = { path = "../approval" }

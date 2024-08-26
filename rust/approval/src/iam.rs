@@ -1,7 +1,7 @@
 use crate::{tags, ticket::ApprovalTicket};
 use aws_sdk_iam::{self, types::Tag};
 use aws_smithy_types_convert::stream::PaginationStreamExt;
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::{Stream, TryStreamExt};
 use std::{future, sync::Arc};
 use thiserror::Error;
 

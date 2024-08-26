@@ -17,6 +17,13 @@ pub enum ParseError {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct HumanIdentity(String);
+
+impl HumanIdentity {
+    pub fn new(s: impl Into<String>) -> Self {
+        HumanIdentity(s.into())
+    }
+}
+
 impl Display for HumanIdentity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
@@ -34,7 +41,6 @@ impl FromStr for ApprovalTicket {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // let parts: Vec<_> = s.split("/").collect();
         let parts = &s.split("/").collect::<Vec<_>>()[..];
 
         let ["by", giver, parts @ ..] = parts else {
@@ -82,10 +88,33 @@ impl Display for ApprovalTicket {
 }
 
 impl ApprovalTicket {
+    pub fn new(giver: HumanIdentity, receiver: HumanIdentity) -> Self {
+        ApprovalTicket {
+            giver,
+            receiver,
+            spec: HashMap::new(),
+        }
+    }
+
+    pub fn insert(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.spec.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn set_chainable(mut self, chainable: bool) -> Self {
+        self.spec.insert("chain".to_string(), chainable.to_string());
+        self
+    }
+
     pub fn is_chainable(&self) -> bool {
         self.spec
             .get_key_value("chain")
             .map_or(false, |(_, v)| v.parse::<bool>().unwrap_or(false))
+    }
+
+    pub fn set_expiry(mut self, expiry: DateTime<Utc>) -> Self {
+        self.spec.insert("exp".to_string(), expiry.timestamp().to_string());
+        self
     }
 
     pub fn expires_at(&self) -> Option<DateTime<Utc>> {
