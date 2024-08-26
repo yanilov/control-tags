@@ -53,11 +53,13 @@ impl FromStr for ApprovalTicket {
 
         let spec = payload
             .iter()
-            .flat_map(|part| part.splitn(2, "="))
-            .collect::<Vec<_>>()
-            .chunks(2)
-            .filter(|chunk| chunk.len() == 2)
-            .map(|elems| (elems[0].to_string(), elems[1].to_string()))
+            .filter_map(|part| {
+                let crumbs = &part.splitn(2, "=").collect::<Vec<_>>()[..];
+                match crumbs {
+                    [key, value] => Some((key.to_string(), value.to_string())),
+                    _ => None,
+                }
+            })
             .collect();
 
         Ok(ApprovalTicket {
@@ -118,15 +120,10 @@ impl ApprovalTicket {
     }
 
     pub fn expires_at(&self) -> Option<DateTime<Utc>> {
-        let expiry_time = self
-            .spec
+        self.spec
             .get_key_value("exp")
-            .map(|(_, v)| v.to_owned())
-            .unwrap_or("".to_owned());
-        match expiry_time.parse::<i64>() {
-            Ok(seconds) => DateTime::from_timestamp(seconds, 0),
-            Err(_) => None,
-        }
+            .and_then(|(_, v)| v.parse::<i64>().ok())
+            .and_then(|seconds| DateTime::from_timestamp(seconds, 0))
     }
 }
 
