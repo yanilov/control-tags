@@ -1,9 +1,14 @@
+locals {
+  retention_lambda_name = "mpa_ticket_retention"
+  retention_lambda_arn  = "arn:aws:lambda:*:${data.aws_caller_identity.account_id}:function:${local.retention_lambda_name}"
+}
+
+# a policy document that allows to remove the approval ticket tag from roles and users
 data "aws_iam_policy_document" "approval_ticket_lifecycle" {
   statement {
     sid    = "ListIAMTags"
     effect = "Allow"
     actions = [
-      "iam:ListPolicyTags",
       "iam:ListRoleTags",
       "iam:ListUserTags",
     ]
@@ -13,7 +18,6 @@ data "aws_iam_policy_document" "approval_ticket_lifecycle" {
     sid    = "RemoveApprovalTicket"
     effect = "Allow"
     actions = [
-      "iam:UntagPolicy",
       "iam:UntagRole",
       "iam:UntagUser"
     ]
@@ -26,6 +30,7 @@ data "aws_iam_policy_document" "approval_ticket_lifecycle" {
   }
 }
 
+# a policy document that allows to traverse the organization's structure
 data "aws_iam_policy_document" "org_traversal" {
   statement {
     sid    = "TraverseAccountsAffectedByPolicy"
@@ -39,6 +44,19 @@ data "aws_iam_policy_document" "org_traversal" {
   }
 }
 
+# allows the lambda (in manager mode) to invoke itself (in worker mode)
+data "aws_iam_policy_document" "invoke_self" {
+  statement {
+    sid = "InvokeSelf"
+
+    effect    = "Allow"
+    actions   = "lambda:InvokeFunction"
+    resources = [local.retention_lambda_arn]
+  }
+}
+
+
+# trust policy for the retention lambda role.
 data "aws_iam_policy_document" "trust_policy" {
   statement {
     effect  = "Allow"
@@ -48,13 +66,9 @@ data "aws_iam_policy_document" "trust_policy" {
       identifiers = ["lambda.amazonaws.com"]
     }
   }
-  statement {
-    effect    = "Allow"
-    actions   = "lambda:InvokeFunction"
-    resources = ["arn:aws:lambda:*:${data.aws_caller_identity.account_id}:function:${local.retention_lambda_name}"]
-  }
 }
 
+# the role that the lambda will assume in each
 resource "aws_cloudformation_stack_set" "retention" {
   name             = "controltags-ticket-retention"
   permission_model = "SERVICE_MANAGED"
@@ -69,10 +83,14 @@ resource "aws_cloudformation_stack_set" "retention" {
         Type = "AWS::IAM::Role"
         Properties = {
           AssumeRolePolicyDocument = data.aws_iam_policy_document.trust_policy.json
-          Description              = "A role which periodically removes stale and invalid approval tickets"
+          Description              = "A role which periodically removes stale approval tickets"
           MaxSessionDuration       = 3600
           Path                     = "/tagctl/v1/mpa"
           Policies = [
+            {
+              PolicyName     = "invoke_self",
+              PolicyDocument = data.aws_iam_policy_document.invoke_self.json
+            },
             {
               PolicyName     = "approval_ticket_lifecycle"
               PolicyDocument = data.aws_iam_policy_document.approval_ticket_lifecycle.json
@@ -82,7 +100,7 @@ resource "aws_cloudformation_stack_set" "retention" {
               PolicyDocument = data.aws_iam_policy_document.org_traversal.json
             }
           ]
-          RoleName = "mpa_ticket_retention"
+          RoleName = "tagctl_ticket_retention"
         }
       }
     }
