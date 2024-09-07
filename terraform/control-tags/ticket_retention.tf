@@ -106,3 +106,11 @@ resource "aws_cloudformation_stack_set" "retention" {
     }
   })
 }
+
+resource "aws_cloudformation_stack_set_instance" "retention" {
+  stack_set_name = aws_cloudformation_stack_set.retention
+  deployment_targets {
+    accounts                = var.deployment_targets.account_ids
+    organizational_unit_ids = var.deployment_targets.organizational_unit_ids
+  }
+}
