@@ -84,7 +84,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
   statement {
     sid     = local.sids.anti_impersonate_non_sso
     effect  = "Deny"
-    actions = "sts:SetSourceIdentity"
+    actions = ["sts:SetSourceIdentity"]
     condition {
       test     = "StringNotEqualsIfExists"
       variable = "aws:PrincipalTag/${local.identity_broker_tag_key}"
@@ -100,7 +100,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
   statement {
     sid     = local.sids.anti_impersonate_sso
     effect  = "Deny"
-    actions = "sts:SetSourceIdentity"
+    actions = ["sts:SetSourceIdentity"]
     condition {
       test     = "StringNotEqualsIfExists"
       variable = "sts:SourceIdentity"
@@ -185,9 +185,9 @@ data "aws_iam_policy_document" "multiparty_approval" {
 
 data "aws_iam_policy_document" "unified" {
   source_policy_documents = [
-    data.data.aws_iam_policy_document.reserved_values.json,
-    data.data.aws_iam_policy_document.control_tags.json,
-    data.data.aws_iam_policy_document.multiparty_approval.json
+    data.aws_iam_policy_document.reserved_values.json,
+    data.aws_iam_policy_document.control_tags.json,
+    data.aws_iam_policy_document.multiparty_approval.json
   ]
 }
 
@@ -196,4 +196,15 @@ resource "aws_organizations_policy" "control_tags" {
   type        = "SERVICE_CONTROL_POLICY"
   description = "Scalable tag-based integrity and multi-party approval."
   content     = data.aws_iam_policy_document.unified.json
+}
+
+# attache the control tags SCP to all deployment targets
+resource "aws_organizations_policy_attachment" "control_tags" {
+  for_each = toset(flatten(values(var.deployment_targets)))
+
+  # the SCP must be attached after the mirror roles have been set up
+  depends_on = [aws_cloudformation_stack_set.mirror_role]
+
+  policy_id = aws_organizations_policy.control_tags.id
+  target_id = each.value
 }

@@ -1,6 +1,6 @@
 locals {
   retention_lambda_name = "mpa_ticket_retention"
-  retention_lambda_arn  = "arn:aws:lambda:*:${data.aws_caller_identity.account_id}:function:${local.retention_lambda_name}"
+  retention_lambda_arn  = "arn:aws:lambda:*:${data.aws_caller_identity.main.account_id}:function:${local.retention_lambda_name}"
 }
 
 # a policy document that allows to remove the approval ticket tag from roles and users
@@ -25,7 +25,7 @@ data "aws_iam_policy_document" "approval_ticket_lifecycle" {
     condition {
       test     = "ForAllValues:StringEquals"
       variable = "aws:TagKeys"
-      values   = [local.local.approval_ticket_tag_key]
+      values   = [local.approval_ticket_tag_key]
     }
   }
 }
@@ -50,17 +50,17 @@ data "aws_iam_policy_document" "invoke_self" {
     sid = "InvokeSelf"
 
     effect    = "Allow"
-    actions   = "lambda:InvokeFunction"
+    actions   = ["lambda:InvokeFunction"]
     resources = [local.retention_lambda_arn]
   }
 }
 
 
 # trust policy for the retention lambda role.
-data "aws_iam_policy_document" "trust_policy" {
+data "aws_iam_policy_document" "retention_trust_policy" {
   statement {
     effect  = "Allow"
-    actions = "sts:AssumeRole"
+    actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
       identifiers = ["lambda.amazonaws.com"]
@@ -82,7 +82,7 @@ resource "aws_cloudformation_stack_set" "retention" {
       ticket_retention_role = {
         Type = "AWS::IAM::Role"
         Properties = {
-          AssumeRolePolicyDocument = data.aws_iam_policy_document.trust_policy.json
+          AssumeRolePolicyDocument = data.aws_iam_policy_document.retention_trust_policy.json
           Description              = "A role which periodically removes stale approval tickets"
           MaxSessionDuration       = 3600
           Path                     = "/tagctl/v1/mpa"
@@ -107,8 +107,11 @@ resource "aws_cloudformation_stack_set" "retention" {
   })
 }
 
+# the instance of the stack set in each of the specified accounts
 resource "aws_cloudformation_stack_set_instance" "retention" {
-  stack_set_name = aws_cloudformation_stack_set.retention
+  count = length(values(var.deployment_targets)) > 0 ? 1 : 0
+
+  stack_set_name = aws_cloudformation_stack_set.retention.name
   deployment_targets {
     accounts                = var.deployment_targets.account_ids
     organizational_unit_ids = var.deployment_targets.organizational_unit_ids
