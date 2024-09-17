@@ -5,6 +5,12 @@ locals {
     ctrl_tag_value = "nil"
   }
 
+  # tag keys that are used to identify the human identity of the caller principal
+  human_identity_tag_keys = [
+    "aws:SourceIdentity",
+    "identitystore:UserId"
+  ]
+
   sids = {
     invalid_identity                = "CT00"
     ctrl_tagging_without_grant_path = "CT01"
@@ -158,7 +164,9 @@ data "aws_iam_policy_document" "multiparty_approval" {
     condition {
       test     = "StringLikeIfExists"
       variable = "aws:PrincipalTag/${local.approval_ticket_tag_key}"
-      values   = ["*/for/$${aws:SourceIdentity, '${local.invalid.identity}'}"]
+      values = [for tag_key in local.human_identity_tag_keys :
+        "*/for/$${${tag_key}, '${local.invalid.identity}'}"
+      ]
     }
   }
 
@@ -178,7 +186,9 @@ data "aws_iam_policy_document" "multiparty_approval" {
     condition {
       test     = "StringNotLike"
       variable = "aws:RequestTag/${local.approval_ticket_tag_key}"
-      values   = ["by/$${aws:SourceIdentity, '${local.invalid.identity}'}/*"]
+      values = [for tag_key in local.human_identity_tag_keys :
+        "by/$${${tag_key}, '${local.invalid.identity}'}/*"
+      ]
     }
   }
 }
