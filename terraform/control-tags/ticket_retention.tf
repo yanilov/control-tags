@@ -109,11 +109,14 @@ resource "aws_cloudformation_stack_set" "retention" {
 
 # the instance of the stack set in each of the specified accounts
 resource "aws_cloudformation_stack_set_instance" "retention" {
-  count = length(values(var.deployment_targets)) > 0 ? 1 : 0
+  count = length(values(local.dyn_deployment_targets)) > 0 ? 1 : 0
 
   stack_set_name = aws_cloudformation_stack_set.retention.name
-  deployment_targets {
-    accounts                = var.deployment_targets.account_ids
-    organizational_unit_ids = var.deployment_targets.organizational_unit_ids
+  dynamic "deployment_targets" {
+    for_each = length(local.dyn_deployment_targets) > 0 ? [null] : []
+    content {
+      accounts                = local.dyn_deployment_targets.account_ids
+      organizational_unit_ids = local.dyn_deployment_targets.organizational_unit_ids
+    }
   }
 }

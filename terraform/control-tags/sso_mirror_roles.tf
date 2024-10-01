@@ -124,8 +124,11 @@ resource "aws_cloudformation_stack_set_instance" "mirror_role" {
   for_each = aws_cloudformation_stack_set.mirror_role
 
   stack_set_name = each.value.name
-  deployment_targets {
-    accounts                = var.deployment_targets.account_ids
-    organizational_unit_ids = var.deployment_targets.organizational_unit_ids
+  dynamic "deployment_targets" {
+    for_each = length(local.dyn_deployment_targets) > 0 ? [null] : []
+    content {
+      accounts                = local.dyn_deployment_targets.account_ids
+      organizational_unit_ids = local.dyn_deployment_targets.organizational_unit_ids
+    }
   }
 }
