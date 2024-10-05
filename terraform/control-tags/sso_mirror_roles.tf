@@ -11,10 +11,6 @@ data "aws_ssoadmin_permission_sets" "main" {
   instance_arn = local.sso_instance_arn
 }
 
-# locals {
-#   permission_set_arn_to_id = { for arn in data.aws_ssoadmin_permission_sets.main.arns : arn => reverse(split("/", arn))[0] }
-# }
-
 
 # lookup the permission by id
 data "awscc_sso_permission_set" "main" {
@@ -23,11 +19,6 @@ data "awscc_sso_permission_set" "main" {
   # ugly hack to get the permission id which cloudcontrol expects
   # see https://github.com/hashicorp/terraform-provider-awscc/issues/1065
   id = "${local.sso_instance_arn}|${each.key}"
-
-  # todo: is instance_arn needed for fetching this datasource?
-  # the aws provider counterpart needs it, but the awscc provider does not, according to docs
-  # instance_arn = local.sso_instance_arn
-
 }
 
 data "aws_iam_policy_document" "mirror_role_trust_policy" {
@@ -58,9 +49,15 @@ data "aws_iam_policy_document" "mirror_role_trust_policy" {
   }
 }
 
+locals {
+  filtered_permission_sets = {
+    for key, value in data.awscc_sso_permission_set.main : key => value if try(value.tags[local.installer_tag_keys.grant_area], "") != ""
+  }
+}
+
 # Create counterpart role as a clfor each permissionset
 resource "aws_cloudformation_stack_set" "mirror_role" {
-  for_each = data.awscc_sso_permission_set.main
+  for_each = local.filtered_permission_sets
 
   name             = "controltags-mirror-role-${each.value.name}"
   permission_model = "SERVICE_MANAGED"
@@ -98,6 +95,10 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
               PolicyName     = "inline"
               PolicyDocument = each.value.inline_policy
             }]
+            Tags = {
+              # place a grant area control tag on the mirror role, as specified by the permission set
+              (local.grant_area_tag_key) = "${local.control_v1}/${each.value.tags[local.installer_tag_keys.grant_area_suffix]}"
+            }
           },
           # append map for aws-managed policy boundary if exists
           try(coalesce(each.value.permissions_boundary.managed_policy_arn), null) == null ? {} : {
