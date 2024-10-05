@@ -19,6 +19,7 @@ locals {
     anti_impersonate_sso            = "CT04"
     anti_reflexive                  = "CT05"
     anti_forge                      = "CT06"
+    anti_non_human                  = "CT07"
   }
 
 }
@@ -42,8 +43,8 @@ data "aws_iam_policy_document" "control_tags" {
   statement {
     sid       = local.sids.ctrl_tagging_without_grant_path
     effect    = "Deny"
-    resources = ["*"]
     actions   = ["*"]
+    resources = ["*"]
     # the request contains a control tag
     condition {
       test     = "ForAnyValue:StringLike"
@@ -61,6 +62,7 @@ data "aws_iam_policy_document" "control_tags" {
   statement {
     sid       = local.sids.ctrl_tagging_outside_grant_area
     effect    = "Deny"
+    actions   = ["*"]
     resources = ["*"]
     # the request contains a control tag
     condition {
@@ -88,9 +90,10 @@ data "aws_iam_policy_document" "control_tags" {
 data "aws_iam_policy_document" "multiparty_approval" {
   # non-sso principal attempts to set source identity without being authorized
   statement {
-    sid     = local.sids.anti_impersonate_non_sso
-    effect  = "Deny"
-    actions = ["sts:SetSourceIdentity"]
+    sid       = local.sids.anti_impersonate_non_sso
+    effect    = "Deny"
+    actions   = ["sts:SetSourceIdentity"]
+    resources = ["*"]
     condition {
       test     = "StringNotEqualsIfExists"
       variable = "aws:PrincipalTag/${local.identity_broker_tag_key}"
@@ -104,9 +107,10 @@ data "aws_iam_policy_document" "multiparty_approval" {
   }
   # sso principal attempts to set source identity which does not match its store-id
   statement {
-    sid     = local.sids.anti_impersonate_sso
-    effect  = "Deny"
-    actions = ["sts:SetSourceIdentity"]
+    sid       = local.sids.anti_impersonate_sso
+    effect    = "Deny"
+    actions   = ["sts:SetSourceIdentity"]
+    resources = ["*"]
     condition {
       test     = "StringNotEqualsIfExists"
       variable = "sts:SourceIdentity"
@@ -121,6 +125,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
 
   # A 2pa ticket can only be set by principals with human identity.
   statement {
+    sid    = local.sids.anti_non_human
     effect = "Deny"
     #todo: originally actions = ["iam:Tag*"]. is * too restrictive? it could pave the way for resource-based approvals
     actions   = ["*"]
@@ -175,7 +180,8 @@ data "aws_iam_policy_document" "multiparty_approval" {
     sid    = local.sids.anti_forge
     effect = "Deny"
     #todo: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
-    actions = ["*"]
+    actions   = ["*"]
+    resources = ["*"]
     #a the request attempts to tag an approval ticket
     condition {
       test     = "Null"

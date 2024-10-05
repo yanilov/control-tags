@@ -79,7 +79,7 @@ resource "aws_cloudformation_stack_set" "retention" {
   capabilities = ["CAPABILITY_NAMED_IAM"]
   template_body = jsonencode({
     Resources = {
-      ticket_retention_role = {
+      TicketRetentionRole = {
         Type = "AWS::IAM::Role"
         Properties = {
           AssumeRolePolicyDocument = data.aws_iam_policy_document.retention_trust_policy.json
