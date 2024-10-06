@@ -85,7 +85,7 @@ resource "aws_cloudformation_stack_set" "retention" {
           AssumeRolePolicyDocument = data.aws_iam_policy_document.retention_trust_policy.json
           Description              = "A role which periodically removes stale approval tickets"
           MaxSessionDuration       = 3600
-          Path                     = "/tagctl/v1/mpa"
+          Path                     = "/tagctl/v1/mpa/"
           Policies = [
             {
               PolicyName     = "invoke_self",
