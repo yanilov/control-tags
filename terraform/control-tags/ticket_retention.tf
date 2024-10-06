@@ -105,6 +105,11 @@ resource "aws_cloudformation_stack_set" "retention" {
       }
     }
   })
+
+  lifecycle {
+    # perpetual diff suppression, this value cannot be specifies as it conflicts with the auto_deployment block
+    ignore_changes = [administration_role_arn]
+  }
 }
 
 # the instance of the stack set in each of the specified accounts
