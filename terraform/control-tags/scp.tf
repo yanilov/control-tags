@@ -216,7 +216,7 @@ resource "aws_organizations_policy" "control_tags" {
 
 # attache the control tags SCP to all deployment targets
 resource "aws_organizations_policy_attachment" "control_tags" {
-  for_each = toset(flatten(values(local.dyn_deployment_targets)))
+  for_each = toset(flatten(values(var.deployment_targets)))
 
   # the SCP must be attached after the mirror roles have been set up
   depends_on = [aws_cloudformation_stack_set.mirror_role]

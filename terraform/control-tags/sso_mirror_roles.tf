@@ -128,8 +128,8 @@ resource "aws_cloudformation_stack_set_instance" "mirror_role" {
   dynamic "deployment_targets" {
     for_each = length(local.dyn_deployment_targets) > 0 ? [null] : []
     content {
-      accounts                = local.dyn_deployment_targets.account_ids
-      organizational_unit_ids = local.dyn_deployment_targets.organizational_unit_ids
+      accounts                = try(local.dyn_deployment_targets.account_ids, null)
+      organizational_unit_ids = try(local.dyn_deployment_targets.organizational_unit_ids, null)
     }
   }
 }
