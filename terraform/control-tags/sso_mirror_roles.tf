@@ -59,6 +59,7 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
           {
             Path               = "/tagctl/v1/sso/"
             RoleName           = "tagctl-mirror-${each.value.name}"
+            # convert the session duration from ISO8601 to seconds
             MaxSessionDuration = tonumber(regexall("^PT(\\d+)H$", each.value.session_duration)[0][0]) * 3600
             AssumeRolePolicyDocument = {
               Version = "2012-10-17"
@@ -71,7 +72,7 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
                   }
                   Condition = {
                     ArnLike = {
-                      "aws:PrincipalArn" = "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"
+                      "aws:PrincipalArn" = [
                     }
                     StringEquals = {
                       "sts:SourceIdentity" = "$${identitystore:UserId}"
