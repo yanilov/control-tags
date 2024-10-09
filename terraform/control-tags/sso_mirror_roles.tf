@@ -32,7 +32,15 @@ data "aws_iam_policy_document" "mirror_role_trust_policy" {
       # trust the sso role which is the counterpart of the permission set in the account,
       # regardless of the account, region, and unique suffix
       identifiers = [
-      "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"]
+        # jsonencode({ Ref = "AWS::AccountId" })
+        "*"
+        #"arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"
+      ]
+    }
+    condition {
+      test     = "ArnLike"
+      variable = "aws:PrincipalArn"
+      values   = ["arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"]
     }
     # only if the resource account is the same as the principal account
     condition {
@@ -50,8 +58,20 @@ data "aws_iam_policy_document" "mirror_role_trust_policy" {
 }
 
 locals {
+  # reshape the tags property to a map
+  permission_sets_fixed = { for key, value in data.awscc_sso_permission_set.main : key => merge(
+    value,
+    {
+      tags = { for t in coalesce(value.tags, []) : t.key => t.value }
+    })
+  }
+
   filtered_permission_sets = {
-    for key, value in data.awscc_sso_permission_set.main : key => value if try(value.tags[local.installer_tag_keys.grant_area], "") != ""
+    for key, value in local.permission_sets_fixed : key => value if lookup(
+      value.tags,
+      local.installer_tag_keys.grant_area_suffix,
+      ""
+    ) != ""
   }
 }
 
@@ -65,23 +85,50 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
     enabled                          = true
     retain_stacks_on_account_removal = false
   }
+
   capabilities = ["CAPABILITY_NAMED_IAM"]
   template_body = jsonencode({
     Resources = {
-      mirror_role = {
+      MirrorRole = {
         Type = "AWS::IAM::Role"
         Properties = merge(
           {
-            Path                     = "/tagctl/v1/sso"
-            RoleName                 = "tagctl_mirror_${each.value.name}"
-            MaxSessionDuration       = each.value.session_duration
-            AssumeRolePolicyDocument = data.aws_iam_policy_document.mirror_role_trust_policy[each.key].json
+            Path               = "/tagctl/v1/sso/"
+            RoleName           = "tagctl-mirror-${each.value.name}"
+            MaxSessionDuration = tonumber(regexall("^PT(\\d+)H$", each.value.session_duration)[0][0]) * 3600
+            #AssumeRolePolicyDocument = data.aws_iam_policy_document.mirror_role_trust_policy[each.key].json
+            AssumeRolePolicyDocument = {
+              Version = "2012-10-17"
+              Statement = [
+                {
+                  Effect = "Allow"
+                  Action = ["sts:AssumeRole", "sts:SetSourceIdentity"]
+                  Principal = {
+                    AWS = { Ref = "AWS::AccountId" }
+                  }
+                  Condition = {
+                    ArnLike = {
+                      "aws:PrincipalArn" = "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"
+                    }
+                    StringEquals = {
+                      "sts:SourceIdentity" = "$${identitystore:UserId}"
+                    }
+                  }
+                },
+                {
+                  Effect = "Allow"
+                  Action = ["sts:TagSession"]
+                  Principal = {
+                    AWS = { Ref = "AWS::AccountId" }
+                  }
+                }
+              ]
+            }
             ManagedPolicyArns = concat(
-              // AWS-managed policies
-              try(coalesce(each.value.managed_policies), []),
-              // customer-managed policies
-              [
-                for spec in try(coalesce(each.value.customer_managed_policy_references), []) :
+              # AWS-managed policies
+              coalesce(each.value.managed_policies, []),
+              # customer-managed policies
+              [for spec in coalesce(each.value.customer_managed_policy_references, []) :
                 {
                   "Fn::Join" : [
                     "arn:aws:iam::",
@@ -91,14 +138,18 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
                 }
               ]
             )
-            Policies = each.value.inline_policy == null ? null : [{
+            Policies = [for policy in each.value.inline_policy[*] : {
               PolicyName     = "inline"
-              PolicyDocument = each.value.inline_policy
-            }]
-            Tags = {
+              PolicyDocument = policy
+              } if policy != ""
+            ]
+            Tags = [
               # place a grant area control tag on the mirror role, as specified by the permission set
-              (local.grant_area_tag_key) = "${local.control_v1}/${each.value.tags[local.installer_tag_keys.grant_area_suffix]}"
-            }
+              {
+                Key   = local.grant_area_tag_key,
+                Value = "${local.control_v1}/${each.value.tags[local.installer_tag_keys.grant_area_suffix]}"
+              }
+            ]
           },
           # append map for aws-managed policy boundary if exists
           try(coalesce(each.value.permissions_boundary.managed_policy_arn), null) == null ? {} : {
@@ -117,6 +168,11 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
       }
     }
   })
+
+  lifecycle {
+    # perpetual diff suppression, this value cannot be specifies as it conflicts with the auto_deployment block
+    ignore_changes = [administration_role_arn]
+  }
 }
 
 

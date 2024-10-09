@@ -5,6 +5,11 @@ locals {
     ctrl_tag_value = "nil"
   }
 
+  stacksets_exec_role_pattern = "arn:aws:iam::*:role/stacksets-exec-*"
+  excluded_principal_patterns = [
+    local.stacksets_exec_role_pattern
+  ]
+
   # tag keys that are used to identify the human identity of the caller principal
   human_identity_tag_keys = [
     "aws:SourceIdentity",
@@ -21,7 +26,6 @@ locals {
     anti_forge                      = "CT06"
     anti_non_human                  = "CT07"
   }
-
 }
 
 data "aws_iam_policy_document" "reserved_values" {
@@ -57,6 +61,11 @@ data "aws_iam_policy_document" "control_tags" {
       variable = "aws:PrincipalTag/${local.grant_area_tag_key}"
       values   = ["true"]
     }
+    condition {
+      test     = "ArnNotLike"
+      variable = "aws:PrincipalArn"
+      values   = local.excluded_principal_patterns
+    }
   }
 
   statement {
@@ -83,6 +92,11 @@ data "aws_iam_policy_document" "control_tags" {
         ],
         var.well_known_tag_keys
       )
+    }
+    condition {
+      test     = "ArnNotLike"
+      variable = "aws:PrincipalArn"
+      values   = local.excluded_principal_patterns
     }
   }
 }
@@ -199,11 +213,33 @@ data "aws_iam_policy_document" "multiparty_approval" {
   }
 }
 
+data "aws_iam_policy_document" "trusted_stacksets_exec" {
+  statement {
+    sid    = "CFTSSE"
+    effect = "Deny"
+    #not_actions = ["iam:Get*", "iam:List*", "sts:AssumeRole"]
+    not_actions = ["iam:Get*", "iam:List*"]
+    resources   = [local.stacksets_exec_role_pattern]
+
+    # this condition is commented out on purpose.
+    # Since both the org admin and member roles are AWS service roles,  they are unaffected by SCPs
+    # condition {
+    #   test     = "ArnNotLike"
+    #   variable = "aws:PrincipalArn"
+    #   values = [
+    #     "arn:aws:iam::$${aws:ResourceAccount}:role/aws-service-role/member.org.stacksets.cloudformation.amazonaws.com/AWSServiceRoleForCloudFormationStackSetsOrgMember",
+    #     "arn:aws:iam::$${aws:PrincipalOrgMasterAccountId}:role/aws-service-role/stacksets.cloudformation.amazonaws.com/AWSServiceRoleForCloudFormationStackSetsOrgAdmin"
+    #   ]
+    # }
+  }
+}
+
 data "aws_iam_policy_document" "unified" {
   source_policy_documents = [
     data.aws_iam_policy_document.reserved_values.json,
     data.aws_iam_policy_document.control_tags.json,
-    data.aws_iam_policy_document.multiparty_approval.json
+    data.aws_iam_policy_document.multiparty_approval.json,
+    data.aws_iam_policy_document.trusted_stacksets_exec.json
   ]
 }
 

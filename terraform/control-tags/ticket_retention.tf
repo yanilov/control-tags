@@ -100,7 +100,7 @@ resource "aws_cloudformation_stack_set" "retention" {
               PolicyDocument = data.aws_iam_policy_document.org_traversal.json
             }
           ]
-          RoleName = "tagctl_ticket_retention"
+          RoleName = "tagctl-ticket-retention"
         }
       }
     }
