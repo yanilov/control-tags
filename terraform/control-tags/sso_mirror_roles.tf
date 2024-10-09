@@ -21,42 +21,6 @@ data "awscc_sso_permission_set" "main" {
   id = "${local.sso_instance_arn}|${each.key}"
 }
 
-data "aws_iam_policy_document" "mirror_role_trust_policy" {
-  for_each = data.awscc_sso_permission_set.main
-
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole", "sts:TagSession", "sts:SetSourceIdentity"]
-    principals {
-      type = "AWS"
-      # trust the sso role which is the counterpart of the permission set in the account,
-      # regardless of the account, region, and unique suffix
-      identifiers = [
-        # jsonencode({ Ref = "AWS::AccountId" })
-        "*"
-        #"arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"
-      ]
-    }
-    condition {
-      test     = "ArnLike"
-      variable = "aws:PrincipalArn"
-      values   = ["arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"]
-    }
-    # only if the resource account is the same as the principal account
-    condition {
-      test     = "StringEquals"
-      variable = "aws:ResourceAccount"
-      values   = ["$${aws:PrincipalAccount}"]
-    }
-    # only if the sso role session passes a source identity value that matches its own identitystore user id
-    condition {
-      test     = "StringEquals"
-      variable = "sts:SourceIdentity"
-      values   = ["$${identitystore:UserId}"]
-    }
-  }
-}
-
 locals {
   # reshape the tags property to a map
   permission_sets_fixed = { for key, value in data.awscc_sso_permission_set.main : key => merge(
@@ -96,7 +60,6 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
             Path               = "/tagctl/v1/sso/"
             RoleName           = "tagctl-mirror-${each.value.name}"
             MaxSessionDuration = tonumber(regexall("^PT(\\d+)H$", each.value.session_duration)[0][0]) * 3600
-            #AssumeRolePolicyDocument = data.aws_iam_policy_document.mirror_role_trust_policy[each.key].json
             AssumeRolePolicyDocument = {
               Version = "2012-10-17"
               Statement = [
