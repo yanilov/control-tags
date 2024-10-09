@@ -57,8 +57,8 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
         Type = "AWS::IAM::Role"
         Properties = merge(
           {
-            Path               = "/tagctl/v1/sso/"
-            RoleName           = "tagctl-mirror-${each.value.name}"
+            Path     = "/tagctl/v1/sso/"
+            RoleName = "tagctl-mirror-${each.value.name}"
             # convert the session duration from ISO8601 to seconds
             MaxSessionDuration = tonumber(regexall("^PT(\\d+)H$", each.value.session_duration)[0][0]) * 3600
             AssumeRolePolicyDocument = {
@@ -73,9 +73,14 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
                   Condition = {
                     ArnLike = {
                       "aws:PrincipalArn" = [
+                        #new-style SSO roles, no path crumb for region in which the SSO instance is deployed
+                        "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_${each.value.name}_*",
+                        #old-stlye SSO roles, with path crumb for region in which the SSO instance is deployed
+                        "arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_${each.value.name}_*"
+                      ]
                     }
-                    StringEquals = {
-                      "sts:SourceIdentity" = "$${identitystore:UserId}"
+                    StringLike = {
+                      "aws:userid" = "*:$${sts:SourceIdentity}"
                     }
                   }
                 },

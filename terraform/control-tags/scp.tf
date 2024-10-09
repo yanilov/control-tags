@@ -13,7 +13,6 @@ locals {
   # tag keys that are used to identify the human identity of the caller principal
   human_identity_tag_keys = [
     "aws:SourceIdentity",
-    "identitystore:UserId"
   ]
 
   sids = {
@@ -102,12 +101,17 @@ data "aws_iam_policy_document" "control_tags" {
 }
 
 data "aws_iam_policy_document" "multiparty_approval" {
-  # non-sso principal attempts to set source identity without being authorized
+  # non-sso principal attempts to set source identity without being authorized as an identity broker
   statement {
     sid       = local.sids.anti_impersonate_non_sso
     effect    = "Deny"
-    actions   = ["sts:SetSourceIdentity"]
+    actions   = ["sts:AssumeRole*"]
     resources = ["*"]
+    condition {
+      test     = "Null"
+      variable = "sts:SourceIdentity"
+      values   = ["false"]
+    }
     condition {
       test     = "StringNotEqualsIfExists"
       variable = "aws:PrincipalTag/${local.identity_broker_tag_key}"
@@ -119,16 +123,23 @@ data "aws_iam_policy_document" "multiparty_approval" {
       values   = ["arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*"]
     }
   }
-  # sso principal attempts to set source identity which does not match its store-id
+  # sso principal attempts to set source identity which does not match its the role session name component in tis aws:userid
   statement {
     sid       = local.sids.anti_impersonate_sso
     effect    = "Deny"
-    actions   = ["sts:SetSourceIdentity"]
+    actions   = ["sts:AssumeRole*"]
     resources = ["*"]
+    # condition {
+    #   test     = "Null"
+    #   variable = "sts:SourceIdentity"
+    #   values   = ["false"]
+    # }
     condition {
-      test     = "StringNotEqualsIfExists"
-      variable = "sts:SourceIdentity"
-      values   = ["$${identitystore:UserId, '${local.invalid.identity}'}"]
+      test     = "StringNotLikeIfExists"
+      variable = "aws:userid"
+      # sso principal must set its session name as source identity,
+      # relying on the identity broker to always set it to the same value
+      values = ["*:$${sts:SourceIdentity, '${local.invalid.identity}'}"]
     }
     condition {
       test     = "ArnLike"
