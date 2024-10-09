@@ -93,11 +93,7 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
               # customer-managed policies
               [for spec in coalesce(each.value.customer_managed_policy_references, []) :
                 {
-                  "Fn::Join" : [
-                    "arn:aws:iam::",
-                    { "Ref" : "AWS::AccountId" },
-                    ":policy/${spec.path}/${spec.name}"
-                  ]
+                  "Fn::Sub" : "arn:aws:iam::$${AWS::AccountId}:policy/${spec.path}/${spec.name}"
                 }
               ]
             )
@@ -121,11 +117,7 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
           # append map for customer-managed policy boundary if exists
           try(coalesce(each.value.permissions_boundary.customer_managed_policy_reference.name), null) == null ? {} : {
             PermissionsBoundary = {
-              "Fn::Join" : [
-                "arn:aws:iam::",
-                { "Ref" : "AWS::AccountId" },
-                ":policy/${each.value.permissions_boundary.customer_managed_policy_reference.path}/${each.value.permissions_boundary.customer_managed_policy_reference.name}",
-              ]
+              "Fn::Sub" : "arn:aws:iam::$${AWS::AccountId}:policy/${each.value.permissions_boundary.customer_managed_policy_reference.path}/${each.value.permissions_boundary.customer_managed_policy_reference.name}"
             }
         })
       }
