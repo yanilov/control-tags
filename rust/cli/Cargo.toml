@@ -7,12 +7,15 @@ edition = "2021"
 anyhow = "1.0.75"
 aws-arn = "0.3.1"
 aws-config = { workspace = true }
-aws-sdk-iam = {workspace = true}
-aws-sdk-sts = {workspace = true}
-chrono = "0.4.31"
+aws-sdk-iam = { workspace = true }
+aws-sdk-sts = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
 clap = { version = "4.4.8", features = ["derive"] }
+serde_json = { workspace = true }
+serde = { workspace = true }
 
 thiserror = "1.0.50"
-tokio = {version = "1.39.3", features = ["full"]}
+tokio = { version = "1.39.3", features = ["full"] }
 
 approval = { path = "../approval" }
+aws-smithy-types-convert = { version = "0.60.8", features = ["convert-chrono"] }
