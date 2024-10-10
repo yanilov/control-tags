@@ -52,7 +52,12 @@ struct TicketArgs {
 #[derive(Subcommand)]
 enum TicketCommand {
     List {},
-    Set { receiver: String },
+    Set {
+        receiver: String,
+        #[cfg(feature = "chainable")]
+        #[cfg_attr(feature = "chainable", arg(long, default_value_t = false))]
+        chain: bool,
+    },
     Unset {},
 }
 
@@ -129,15 +134,25 @@ async fn handle_ticket_commands(_app_config: &Configuration, args: TicketArgs) -
                 eprintln!("Error: {:#}", e);
             }
         },
-        TicketCommand::Set { receiver } => {
+        TicketCommand::Set {
+            receiver,
+            #[cfg(feature = "chainable")]
+            chain,
+        } => {
             let expiry = chrono::Utc::now() + chrono::Duration::hours(1);
             let giver = match session_name {
                 Some(session) => session,
                 None => get_caller(&sts_client).await?.1,
             };
 
-            let ticket =
-                ApprovalTicket::new(HumanIdentity::new(giver.0), HumanIdentity::new(receiver)).set_expiry(expiry);
+            let mut ticket = ApprovalTicket::new(HumanIdentity::new(giver.0), HumanIdentity::new(receiver));
+
+            ticket.set_expiry(expiry);
+
+            #[cfg(feature = "chainable")]
+            if chain {
+                ticket.set_chainable(true);
+            }
 
             if let Err(e) = manager.set_ticket(&role_name.0, ticket).await {
                 eprintln!("Error: {:#}", e);

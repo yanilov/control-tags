@@ -3,6 +3,9 @@ name = "approval"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+chainable = []
+
 [dependencies]
 chrono = { workspace = true }
 futures = { workspace = true }

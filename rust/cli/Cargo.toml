@@ -3,6 +3,10 @@ name = "cli"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["approval"]
+chainable = ["approval/chainable"]
+
 [dependencies]
 anyhow = "1.0.75"
 aws-arn = "0.3.1"
@@ -17,5 +21,5 @@ serde = { workspace = true }
 thiserror = "1.0.50"
 tokio = { version = "1.39.3", features = ["full"] }
 
-approval = { path = "../approval" }
+approval = { path = "../approval", optional = true }
 aws-smithy-types-convert = { version = "0.60.8", features = ["convert-chrono"] }

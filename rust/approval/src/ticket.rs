@@ -98,23 +98,24 @@ impl ApprovalTicket {
         }
     }
 
-    pub fn insert(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub fn insert(&mut self, key: impl Into<String>, value: impl Into<String>) -> &Self {
         self.spec.insert(key.into(), value.into());
         self
     }
 
-    pub fn set_chainable(mut self, chainable: bool) -> Self {
+    #[cfg(feature = "chainable")]
+    pub fn set_chainable(&mut self, chainable: bool) -> &Self {
         self.spec.insert("chain".to_string(), chainable.to_string());
         self
     }
-
+    #[cfg(feature = "chainable")]
     pub fn is_chainable(&self) -> bool {
         self.spec
             .get_key_value("chain")
             .map_or(false, |(_, v)| v.parse::<bool>().unwrap_or(false))
     }
 
-    pub fn set_expiry(mut self, expiry: DateTime<Utc>) -> Self {
+    pub fn set_expiry(&mut self, expiry: DateTime<Utc>) -> &Self {
         self.spec.insert("exp".to_string(), expiry.timestamp().to_string());
         self
     }
@@ -134,11 +135,18 @@ mod tests {
 
     #[test]
     fn test_parse_ticket() {
-        let ticket = "by/alice/chain=true/exp=1618033988/for/bob";
+        let ticket = if cfg!(feature = "chainable") {
+            "by/alice/chain=true/exp=1618033988/for/bob"
+        } else {
+            "by/alice/exp=1618033988/for/bob"
+        };
         let parsed = ticket.parse::<ApprovalTicket>().unwrap();
         assert_eq!(parsed.giver.0, "alice");
         assert_eq!(parsed.receiver.0, "bob");
+
+        #[cfg(feature = "chainable")]
         assert_eq!(parsed.is_chainable(), true);
+
         assert_eq!(parsed.spec.get("exp"), Some(&"1618033988".to_string()));
     }
 
@@ -157,11 +165,13 @@ mod tests {
         let displayed = format!("{}", ticket);
         assert!(displayed.starts_with("by/alice/"));
         assert!(displayed.ends_with("/for/bob"));
+        #[cfg(feature = "chainable")]
         assert!(displayed.contains("/chain=true/"));
         assert!(displayed.contains("/exp=1618033988/"));
     }
 
     #[test]
+    #[cfg(feature = "chainable")]
     fn test_chainable_ticket() {
         let ticket = ApprovalTicket {
             giver: HumanIdentity("alice".to_string()),
@@ -173,6 +183,7 @@ mod tests {
             .into_iter()
             .collect(),
         };
+
         assert_eq!(ticket.is_chainable(), true);
     }
 
@@ -181,12 +192,9 @@ mod tests {
         let ticket = ApprovalTicket {
             giver: HumanIdentity("alice".to_string()),
             receiver: HumanIdentity("bob".to_string()),
-            spec: vec![
-                ("chain".to_string(), "true".to_string()),
-                ("exp".to_string(), "1618033988".to_string()),
-            ]
-            .into_iter()
-            .collect(),
+            spec: vec![("exp".to_string(), "1618033988".to_string())]
+                .into_iter()
+                .collect(),
         };
         assert_eq!(
             ticket.expires_at(),
