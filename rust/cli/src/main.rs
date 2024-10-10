@@ -142,7 +142,7 @@ async fn get_caller(sts: &aws_sdk_sts::Client) -> anyhow::Result<(CallerRoleName
     let arn: ResourceName = arn.parse()?;
     let resource_name_parts: Vec<_> = arn.resource.split("/").collect();
     match resource_name_parts[..] {
-        ["assumed_role", role, _session] => Some((
+        ["assumed-role", role, _session] => Some((
             CallerRoleName(role.to_string()),
             CallerSessionName(_session.to_string()),
         )),
