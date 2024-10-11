@@ -15,7 +15,7 @@ use clap::{Args, Parser, Subcommand};
 use config::Configuration;
 
 use serde_json;
-use std::{path::PathBuf, sync::Arc};
+use std::{cmp::min, path::PathBuf, sync::Arc};
 use tokio;
 
 #[derive(Parser)]
@@ -214,11 +214,17 @@ async fn handle_mirror_commands(_app_config: &Configuration, args: MirrorArgs) -
                 .role
                 .with_context(|| format!("no mirror role found for {}", current_role.role_name))?;
 
+            // Role chaining duration is globally capped at 3600 seconds, however,
+            // if the mirror role has a lower cap, we should respect that.
+            // 900 is the global minimum for role session duration, and is used as a fallback
+            //  if the mirror role does not specify a duration.
+            let session_duration = min(Some(3600), mirror_role.max_session_duration).unwrap_or(900);
+
             let assume_output = sts_client
                 .assume_role()
                 .role_arn(mirror_role.arn)
                 .role_session_name(&session_name.0)
-                //.duration_seconds(role.max_session_duration.unwrap_or(900))
+                .duration_seconds(session_duration)
                 .source_identity(&session_name.0)
                 .send()
                 .await?;
