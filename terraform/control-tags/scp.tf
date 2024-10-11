@@ -21,9 +21,9 @@ locals {
     ctrl_tagging_outside_grant_area = "CT02"
     anti_impersonate_non_sso        = "CT03"
     anti_impersonate_sso            = "CT04"
-    anti_reflexive                  = "CT05"
-    anti_forge                      = "CT06"
-    anti_non_human                  = "CT07"
+    anti_non_human                  = "CT05"
+    anti_reflexive                  = "CT06"
+    anti_forge                      = "CT07"
   }
 }
 
