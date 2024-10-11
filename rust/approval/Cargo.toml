@@ -19,3 +19,4 @@ aws-smithy-types-convert = { version = "0.60.8", features = [
 const_format = "0.2.32"
 
 thiserror = "1.0.50"
+anyhow = "1.0.86"

@@ -1,5 +1,10 @@
-use crate::{tags, ticket::ApprovalTicket};
-use aws_sdk_iam::{self, types::Tag};
+use crate::{
+    tags,
+    ticket::{ApprovalTicket, ParseError},
+};
+use anyhow;
+use aws_sdk_iam::{self, error::BuildError, types::Tag};
+
 use aws_smithy_types_convert::stream::PaginationStreamExt;
 use futures::{Stream, TryStreamExt};
 use std::{future, sync::Arc};
@@ -7,36 +12,36 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ListPrincipalsError {
-    #[error("cannot list principals")]
-    InternalError,
+    #[error("cannot list principals: {0}")]
+    InternalError(#[from] anyhow::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ListAllTicketsError {
-    #[error("cannot list tickets")]
-    InternalError,
+    #[error("cannot list tickets: {0}")]
+    InternalError(#[from] anyhow::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ListTicketsError {
-    #[error("cannot list tickets")]
-    InternalError,
+    #[error("cannot list tickets: {0}")]
+    InternalError(#[from] anyhow::Error),
     #[error("principal {0} was not included in the response")]
     MissingPrincipal(NamedIamPrincipal),
 }
 
 #[derive(Error, Debug)]
 pub enum SetTicketError {
-    #[error("cannot list tickets")]
-    InternalError,
+    #[error("cannot set ticket: {0:?}")]
+    InternalError(#[from] anyhow::Error),
     #[error("create tag from ticket specification")]
     MalformedTag,
 }
 
 #[derive(Error, Debug)]
 pub enum UnsetTicketError {
-    #[error("cannot list tickets")]
-    InternalError,
+    #[error("cannot unset ticket: {0}")]
+    InternalError(#[from] anyhow::Error),
 }
 
 pub type NamedIamPrincipal = String;
@@ -86,12 +91,12 @@ impl ApprovalManager for RoleApprovalManager {
             .items()
             .send()
             .into_stream_03x()
-            .map_err(|_| ListAllTicketsError::InternalError)
+            .map_err(|e| ListAllTicketsError::InternalError(e.into()))
             .map_ok(|role| async {
                 let ticket = self
                     .get_ticket(&role.role_name)
                     .await
-                    .map_err(|_| ListAllTicketsError::InternalError)?;
+                    .map_err(|e| ListAllTicketsError::InternalError(e.into()))?;
                 Ok((role.role_name, ticket))
             })
             .try_buffer_unordered(4)
@@ -110,7 +115,7 @@ impl ApprovalManager for RoleApprovalManager {
             .role_name(principal)
             .send()
             .await
-            .map_err(|_| ListTicketsError::InternalError)?
+            .map_err(|e| ListTicketsError::InternalError(e.into()))?
             .role;
 
         let Some(role) = role else {
@@ -131,7 +136,8 @@ impl ApprovalManager for RoleApprovalManager {
             .tags(tag)
             .send()
             .await
-            .map_err(|_| SetTicketError::InternalError)?;
+            //.inspect_err(|e| eprintln!("{:?}", e))
+            .map_err(|e| SetTicketError::InternalError(e.into()))?;
         Ok(())
     }
 
@@ -142,7 +148,7 @@ impl ApprovalManager for RoleApprovalManager {
             .role_name(principal)
             .send()
             .await
-            .map_err(|_| UnsetTicketError::InternalError)?;
+            .map_err(|e| UnsetTicketError::InternalError(e.into()))?;
         Ok(())
     }
 }
@@ -155,12 +161,12 @@ impl ApprovalManager for UserApprovalManager {
             .items()
             .send()
             .into_stream_03x()
-            .map_err(|_| ListAllTicketsError::InternalError)
+            .map_err(|e| ListAllTicketsError::InternalError(e.into()))
             .map_ok(|user| async {
                 let ticket = self
                     .get_ticket(&user.user_name)
                     .await
-                    .map_err(|_| ListAllTicketsError::InternalError)?;
+                    .map_err(|e| ListAllTicketsError::InternalError(e.into()))?;
                 Ok((user.user_name, ticket))
             })
             .try_buffer_unordered(4)
@@ -179,7 +185,7 @@ impl ApprovalManager for UserApprovalManager {
             .user_name(principal)
             .send()
             .await
-            .map_err(|_| ListTicketsError::InternalError)?
+            .map_err(|e| ListTicketsError::InternalError(e.into()))?
             .user;
 
         let Some(user) = user else {
@@ -200,7 +206,7 @@ impl ApprovalManager for UserApprovalManager {
             .tags(tag)
             .send()
             .await
-            .map_err(|_| SetTicketError::InternalError)?;
+            .map_err(|e| SetTicketError::InternalError(e.into()))?;
         Ok(())
     }
 
@@ -211,29 +217,39 @@ impl ApprovalManager for UserApprovalManager {
             .user_name(principal)
             .send()
             .await
-            .map_err(|_| UnsetTicketError::InternalError)?;
+            .map_err(|e| UnsetTicketError::InternalError(e.into()))?;
         Ok(())
     }
 }
 
+#[derive(Error, Debug)]
+pub enum TicketBuildError {
+    #[error("Invalid tag key: {0}. Tag key must start with {}", tags::KEY_ADMIN_TICKET)]
+    TagKeyInvalid(String),
+    #[error("Failed to parse tag value: {0}")]
+    TagValueParseError(#[from] ParseError),
+}
+
 impl TryFrom<&Tag> for crate::ticket::ApprovalTicket {
-    type Error = ();
+    type Error = TicketBuildError;
 
     fn try_from(tag: &Tag) -> Result<Self, Self::Error> {
-        match tag.key() {
-            key if key.starts_with(tags::KEY_ADMIN_TICKET) => tag.value().parse::<ApprovalTicket>().map_err(|_| ()),
-            _ => Err(()),
+        if !tag.key().starts_with(tags::KEY_ADMIN_TICKET) {
+            return Err(TicketBuildError::TagKeyInvalid(tag.key().to_string()));
         }
+
+        tag.value()
+            .parse::<ApprovalTicket>()
+            .map_err(|e| TicketBuildError::TagValueParseError(e))
     }
 }
 
 impl TryFrom<crate::ticket::ApprovalTicket> for Tag {
-    type Error = ();
+    type Error = BuildError;
     fn try_from(ticket: crate::ticket::ApprovalTicket) -> Result<Self, Self::Error> {
         Tag::builder()
             .key(tags::KEY_ADMIN_TICKET)
             .value(ticket.to_string())
             .build()
-            .map_err(|_| ())
     }
 }

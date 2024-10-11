@@ -1,9 +1,5 @@
-use anyhow::{Context, Result};
-use approval::{
-    self,
-    iam::{ApprovalManager, ListAllTicketsError},
-    ticket::ApprovalTicket,
-};
+use anyhow::{anyhow, Context, Result};
+use approval::{self, iam::ApprovalManager, ticket::ApprovalTicket};
 use async_stream::try_stream;
 use aws_config::{sts::AssumeRoleProviderBuilder, BehaviorVersion};
 use aws_sdk_iam;
@@ -145,6 +141,7 @@ async fn evict_invalid_tickets<T: ApprovalManager>(
 ) -> anyhow::Result<Vec<(String, ApprovalTicket)>> {
     let evicted = manager
         .list_all_tickets()
+        .map_err(|e| anyhow!(e))
         .try_filter_map(|(principal, ticket)| async {
             if is_evictable(&ticket, max_ttl) {
                 Ok(Some((principal, ticket)))
@@ -155,10 +152,7 @@ async fn evict_invalid_tickets<T: ApprovalManager>(
         .map(|result| async {
             match result {
                 Ok((principal, ticket)) => {
-                    manager
-                        .unset_ticket(&principal)
-                        .await
-                        .map_err(|_| ListAllTicketsError::InternalError)?;
+                    manager.unset_ticket(&principal).await.map_err(|e| anyhow!(e))?;
                     Ok((principal, ticket))
                 }
                 Err(e) => Err(e),
