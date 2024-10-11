@@ -163,22 +163,10 @@ data "aws_iam_policy_document" "multiparty_approval" {
   }
 
   # Limit the “receiver section” of the tag’s value to anything but the current principal’s identity.
-  # todo: for reference, the original statement. the new one with * should be more flexible for resource-based approvals
-
-  # statement {
-  #   sid = local.sids.anti_reflexive
-  #   effect = "Deny"
-  #   actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]
-  #   resources = ["*"]
-  #   condition {
-  #     test = "StringLike"
-  #     variable = "aws:RequestTag/${local.approval_ticket_tag_key}"
-  #     values = ["*/for/$${aws:SourceIdentity, '${local.invalid.identity}'}"]
-  #   }
-  # }
   statement {
-    sid       = local.sids.anti_reflexive
-    effect    = "Deny"
+    sid    = local.sids.anti_reflexive
+    effect = "Deny"
+    #todo: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
     actions   = ["*"]
     resources = ["*"]
     condition {
