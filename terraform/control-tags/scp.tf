@@ -172,7 +172,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
   #   resources = ["*"]
   #   condition {
   #     test = "StringLike"
-  #     variable = "aws:PrincipalTag/${local.approval_ticket_tag_key}"
+  #     variable = "aws:RequestTag/${local.approval_ticket_tag_key}"
   #     values = ["*/for/$${aws:SourceIdentity, '${local.invalid.identity}'}"]
   #   }
   # }
@@ -188,7 +188,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
     }
     condition {
       test     = "StringLikeIfExists"
-      variable = "aws:PrincipalTag/${local.approval_ticket_tag_key}"
+      variable = "aws:RequestTag/${local.approval_ticket_tag_key}"
       values = [for tag_key in local.human_identity_tag_keys :
         "*/for/$${${tag_key}, '${local.invalid.identity}'}"
       ]
