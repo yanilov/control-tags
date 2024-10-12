@@ -1,6 +1,6 @@
 # tagging related
 locals {
-  control_prefix = "tagctl/"
+  control_prefix = "tagctl:"
   control_v1     = "${local.control_prefix}v1"
 
   grant_area_tag_key      = "${local.control_v1}/meta/grant_area"
