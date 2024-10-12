@@ -16,30 +16,15 @@ locals {
   ]
 
   sids = {
-    invalid_identity                = "CT00"
-    ctrl_tagging_without_grant_path = "CT01"
-    ctrl_tagging_outside_grant_area = "CT02"
-    ctrl_tagging_lookalike          = "CT03"
+    ctrl_tagging_without_grant_path = "CT00"
+    ctrl_tagging_outside_grant_area = "CT01"
+    ctrl_tagging_lookalike          = "CT02"
+    anti_invalid_identity           = "CT03"
     anti_impersonate_non_sso        = "CT04"
     anti_impersonate_sso            = "CT05"
     anti_non_human                  = "CT06"
     anti_reflexive                  = "CT07"
     anti_forge                      = "CT08"
-  }
-}
-
-data "aws_iam_policy_document" "reserved_values" {
-  statement {
-    sid       = local.sids.invalid_identity
-    effect    = "Deny"
-    actions   = ["sts:SetSourceIdentity"]
-    resources = ["*"]
-    # the principal attempts to set a reserved "nil" value as source identity
-    condition {
-      test     = "StringEquals"
-      variable = "sts:SourceIdentity"
-      values   = [local.invalid.identity]
-    }
   }
 }
 
@@ -99,7 +84,6 @@ data "aws_iam_policy_document" "control_tags" {
       values   = local.excluded_principal_patterns
     }
   }
-
   # protect against tagctl prefix lookalikes, like "tagctl/" or "tagctl-"
   statement {
     sid       = local.sids.ctrl_tagging_lookalike
@@ -115,6 +99,19 @@ data "aws_iam_policy_document" "control_tags" {
 }
 
 data "aws_iam_policy_document" "multiparty_approval" {
+  # the principal attempts to set a reserved "nil" value as source identity.
+  # this is a reserved value that is used to indicate that the caller principal  does not have a source identity.
+  statement {
+    sid       = local.sids.anti_invalid_identity
+    effect    = "Deny"
+    actions   = ["sts:SetSourceIdentity"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "sts:SourceIdentity"
+      values   = [local.invalid.identity]
+    }
+  }
   # non-sso principal attempts to set source identity without being authorized as an identity broker
   statement {
     sid       = local.sids.anti_impersonate_non_sso
@@ -156,8 +153,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
       values   = ["arn:aws:iam::*:role/aws-reserved/sso.amazonaws.com/*"]
     }
   }
-
-  # A 2pa ticket can only be set by principals with human identity.
+  # An mpa ticket can only be set by principals with human identity.
   statement {
     sid    = local.sids.anti_non_human
     effect = "Deny"
@@ -175,7 +171,6 @@ data "aws_iam_policy_document" "multiparty_approval" {
       values   = ["true"]
     }
   }
-
   # Limit the “receiver section” of the tag’s value to anything but the current principal’s identity.
   statement {
     sid    = local.sids.anti_reflexive
@@ -196,7 +191,6 @@ data "aws_iam_policy_document" "multiparty_approval" {
       ]
     }
   }
-
   # Limit the “giver section” of the tag’s value to be just the current principal’s identity.
   statement {
     sid    = local.sids.anti_forge
@@ -244,7 +238,6 @@ data "aws_iam_policy_document" "trusted_stacksets_exec" {
 
 data "aws_iam_policy_document" "unified" {
   source_policy_documents = [
-    data.aws_iam_policy_document.reserved_values.json,
     data.aws_iam_policy_document.control_tags.json,
     data.aws_iam_policy_document.multiparty_approval.json,
     data.aws_iam_policy_document.trusted_stacksets_exec.json
