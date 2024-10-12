@@ -1,7 +1,10 @@
 # tagging related
 locals {
   control_prefix = "tagctl:"
-  control_v1     = "${local.control_prefix}v1"
+  disallowed_control_prefix_lookalikes = [for ch in split("", ".+=@_/-") :
+    "tagctl/${ch}"
+  ]
+  control_v1 = "${local.control_prefix}v1"
 
   grant_area_tag_key      = "${local.control_v1}/meta/grant_area"
   identity_broker_tag_key = "${local.control_v1}/meta/id_broker"

@@ -19,11 +19,12 @@ locals {
     invalid_identity                = "CT00"
     ctrl_tagging_without_grant_path = "CT01"
     ctrl_tagging_outside_grant_area = "CT02"
-    anti_impersonate_non_sso        = "CT03"
-    anti_impersonate_sso            = "CT04"
-    anti_non_human                  = "CT05"
-    anti_reflexive                  = "CT06"
-    anti_forge                      = "CT07"
+    ctrl_tagging_lookalike          = "CT03"
+    anti_impersonate_non_sso        = "CT04"
+    anti_impersonate_sso            = "CT05"
+    anti_non_human                  = "CT06"
+    anti_reflexive                  = "CT07"
+    anti_forge                      = "CT08"
   }
 }
 
@@ -96,6 +97,19 @@ data "aws_iam_policy_document" "control_tags" {
       test     = "ArnNotLike"
       variable = "aws:PrincipalArn"
       values   = local.excluded_principal_patterns
+    }
+  }
+
+  # protect against tagctl prefix lookalikes, like "tagctl/" or "tagctl-"
+  statement {
+    sid       = local.sids.ctrl_tagging_lookalike
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    condition {
+      test     = "ForAnyValue:StringLike"
+      variable = "aws:TagKeys"
+      values   = local.disallowed_control_prefix_lookalikes
     }
   }
 }
