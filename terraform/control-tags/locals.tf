@@ -11,10 +11,6 @@ locals {
   mpa_tag_key             = "${local.control_v1}/admin/mpa"
   approval_ticket_tag_key = "${local.mpa_tag_key}/ticket"
 
-  installer_tag_keys = {
-    # tag a permissionsset with this tag key, specifying grant area suffix to set up a mirror role with control tags attached
-    grant_area_suffix = "info/tagctl/installer/mirror_role/grant_area_suffix"
-  }
 }
 
 # dynamically shaped

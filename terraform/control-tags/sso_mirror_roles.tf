@@ -31,11 +31,7 @@ locals {
   }
 
   filtered_permission_sets = {
-    for key, value in local.permission_sets_fixed : key => value if lookup(
-      value.tags,
-      local.installer_tag_keys.grant_area_suffix,
-      ""
-    ) != ""
+    for key, value in local.permission_sets_fixed : key => value if lookup(var.sso_mirror_spec, value.permission_set_arn, null) != null
   }
 }
 
@@ -112,7 +108,7 @@ resource "aws_cloudformation_stack_set" "mirror_role" {
               # place a grant area control tag on the mirror role, as specified by the permission set
               {
                 Key   = local.grant_area_tag_key,
-                Value = "${local.control_v1}/${each.value.tags[local.installer_tag_keys.grant_area_suffix]}"
+                Value = "${local.control_v1}/${var.sso_mirror_spec[each.value.permission_set_arn].grant_area_suffix}"
               }
             ]
           },
