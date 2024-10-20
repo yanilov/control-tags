@@ -2,7 +2,7 @@ locals {
 
   invalid = {
     identity       = "nil"
-    ctrl_tag_value = "nil"
+    ctl_tag_value = "nil"
   }
 
   stacksets_exec_role_pattern = "arn:aws:iam::*:role/stacksets-exec-*"
@@ -16,9 +16,9 @@ locals {
   ]
 
   sids = {
-    ctrl_tagging_without_grant_path = "CT00"
-    ctrl_tagging_outside_grant_area = "CT01"
-    ctrl_tagging_lookalike          = "CT02"
+    ctl_no_grant             = "CT00"
+    ctl_outside_grant        = "CT01"
+    ctl_lookalike            = "CT02"
     anti_invalid_identity           = "CT03"
     anti_impersonate_non_sso        = "CT04"
     anti_impersonate_sso            = "CT05"
@@ -30,7 +30,7 @@ locals {
 
 data "aws_iam_policy_document" "control_tags" {
   statement {
-    sid       = local.sids.ctrl_tagging_without_grant_path
+    sid       = local.sids.ctl_no_grant
     effect    = "Deny"
     actions   = ["*"]
     resources = ["*"]
@@ -54,7 +54,7 @@ data "aws_iam_policy_document" "control_tags" {
   }
 
   statement {
-    sid       = local.sids.ctrl_tagging_outside_grant_area
+    sid       = local.sids.ctl_outside_grant
     effect    = "Deny"
     actions   = ["*"]
     resources = ["*"]
@@ -72,8 +72,8 @@ data "aws_iam_policy_document" "control_tags" {
       variable = "aws:TagKeys"
       values = concat(
         [
-          "$${aws:PrincipalTag/${local.grant_area_tag_key}, '${local.invalid.ctrl_tag_value}'}",
-          "$${aws:PrincipalTag/${local.grant_area_tag_key}, '${local.invalid.ctrl_tag_value}'}/*"
+          "$${aws:PrincipalTag/${local.grant_area_tag_key}, '${local.invalid.ctl_tag_value}'}",
+          "$${aws:PrincipalTag/${local.grant_area_tag_key}, '${local.invalid.ctl_tag_value}'}/*"
         ],
         var.well_known_tag_keys
       )
@@ -86,7 +86,7 @@ data "aws_iam_policy_document" "control_tags" {
   }
   # protect against tagctl prefix lookalikes, like "tagctl/" or "tagctl-"
   statement {
-    sid       = local.sids.ctrl_tagging_lookalike
+    sid       = local.sids.ctl_lookalike
     effect    = "Deny"
     actions   = ["*"]
     resources = ["*"]
