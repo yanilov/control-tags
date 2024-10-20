@@ -12,19 +12,19 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ListPrincipalsError {
-    #[error("cannot list principals: {0}")]
+    #[error("cannot list principals: {0:?}")]
     InternalError(#[from] anyhow::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ListAllTicketsError {
-    #[error("cannot list tickets: {0}")]
+    #[error("cannot list tickets: {0:?}")]
     InternalError(#[from] anyhow::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ListTicketsError {
-    #[error("cannot list tickets: {0}")]
+    #[error("cannot list tickets: {0:?}")]
     InternalError(#[from] anyhow::Error),
     #[error("principal {0} was not included in the response")]
     MissingPrincipal(NamedIamPrincipal),
@@ -40,7 +40,7 @@ pub enum SetTicketError {
 
 #[derive(Error, Debug)]
 pub enum UnsetTicketError {
-    #[error("cannot unset ticket: {0}")]
+    #[error("cannot unset ticket: {0:?}")]
     InternalError(#[from] anyhow::Error),
 }
 
