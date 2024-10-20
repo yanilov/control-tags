@@ -15,7 +15,7 @@ locals {
     "aws:SourceIdentity",
   ]
 
-  sids = {
+  sids_map = {
     ctl_no_grant             = "CT00"
     ctl_outside_grant        = "CT01"
     ctl_lookalike            = "CT02"
@@ -25,7 +25,17 @@ locals {
     anti_non_human                  = "CT06"
     anti_reflexive                  = "CT07"
     anti_forge                      = "CT08"
+
+    seal_op_no_approval   = "CTRS0"
+    seal_op_outside_grant = "CTRS1"
   }
+
+  sid_selector = {
+    short = local.sids_map
+    long  = { for k, v in local.sids_map : k => replace(title(replace(k, "_", " ")), " ", "") }
+    none  = { for k, v in local.sids_map : k => null }
+  }
+  sids = local.sid_selector[var.emit_scp_sids]
 }
 
 data "aws_iam_policy_document" "control_tags" {
