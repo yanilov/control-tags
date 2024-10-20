@@ -2,7 +2,7 @@
 locals {
   control_prefix = "tagctl:"
   disallowed_control_prefix_lookalikes = [for ch in split("", ".+=@_/-") :
-    "tagctl/${ch}"
+    "tagctl${ch}"
   ]
   control_v1 = "${local.control_prefix}v1"
 
