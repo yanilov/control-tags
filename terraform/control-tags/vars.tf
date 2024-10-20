@@ -8,14 +8,6 @@ variable "well_known_tag_keys" {
   type = list(string)
 }
 
-variable "using_delegated_admin_account" {
-  default     = false
-  description = <<-EOT
-    set this to true if you'd like to apply this module from a delegated administrator account for SCPs.
-    false by default which requires this module to be installed from the management (master) account.
-  EOT
-}
-
 variable "deployment_targets" {
   default     = { organizational_unit_ids = [], account_ids = [] }
   description = <<-EOT
