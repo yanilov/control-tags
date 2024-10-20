@@ -4,7 +4,7 @@ members = ["rust/approval", "rust/cli", "rust/retention-lambda"]
 
 [workspace.dependencies]
 futures = "0.3.30"
-aws-config = "1.5.5"
+aws-config = "1.5.8"
 aws-sdk-iam = "1.41.0"
 aws-sdk-sts = "1.39.0"
 chrono = "0.4.38"

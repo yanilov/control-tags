@@ -30,7 +30,7 @@ variable "deployment_targets" {
 
 
 variable "sso_mirror_spec" {
-  default    = {}
+  default     = {}
   description = <<-EOT
     A map from permission set arn to a mirror role spec.
     Each specified permission set will have a mirror role created in every all accounts of each target specified by `deployment_targets`.
@@ -38,7 +38,21 @@ variable "sso_mirror_spec" {
      - grant_area_suffix: the grant area to be set on the mirror role. the value will be concatenated after with the control prefix to form the grant area control tag value.
   EOT
   # tag a permissionsset with this tag key, specifying grant area suffix to set up a mirror role with control tags attached
-  type =  map(object({
+  type = map(object({
     grant_area_suffix = string
   }))
+}
+
+variable "emit_scp_sids" {
+  default     = "short"
+  description = <<-EOT
+    The SID format to use for the control tags. The default is "short" which uses the short form of the SID.
+    The second option is "long" which uses the long form of the SID, and the third option is "none" which does not emit SIDs.
+  EOT
+  type        = string
+
+  validation {
+    condition     = contains(["short", "long", "none"], var.emit_scp_sids)
+    error_message = "The emit_scp_sids must be one of 'short', 'long', or 'none'."
+  }
 }
