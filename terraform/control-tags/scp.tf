@@ -258,10 +258,10 @@ resource "aws_organizations_policy" "control_tags" {
   name        = "control_tags"
   type        = "SERVICE_CONTROL_POLICY"
   description = "Scalable tag-based integrity and multi-party approval."
-  content     = data.aws_iam_policy_document.unified.json
+  content     = data.aws_iam_policy_document.unified.minified_json
 }
 
-# attache the control tags SCP to all deployment targets
+# attach the control tags SCP to all deployment targets
 resource "aws_organizations_policy_attachment" "control_tags" {
   for_each = toset(flatten(values(var.deployment_targets)))
 
