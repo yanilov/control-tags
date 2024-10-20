@@ -11,6 +11,10 @@ locals {
   mpa_tag_key             = "${local.control_v1}/admin/mpa"
   approval_ticket_tag_key = "${local.mpa_tag_key}/ticket"
 
+  resource_seal_tag_key       = "${local.mpa_tag_key}/seal"
+  resource_seal_kind_tag_key  = "${local.resource_seal_tag_key}/kind"
+  resource_seal_grant_tag_key = "${local.resource_seal_tag_key}/grant"
+
 }
 
 # dynamically shaped
