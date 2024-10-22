@@ -17,8 +17,8 @@ use std::{env::var, sync::Arc};
 
 #[derive(Serialize, Deserialize)]
 enum Request {
-    ScheduleApprovalEviction,
-    EvictStaleApprovals(String),
+    ScheduleApprovalEviction {},
+    EvictStaleApprovals { account_id: String },
 }
 
 #[derive(Serialize)]
@@ -68,7 +68,7 @@ async fn init_appstate() -> anyhow::Result<AppState> {
 pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Response, Error> {
     let appstate = init_appstate().await?;
     match event.payload {
-        Request::ScheduleApprovalEviction => {
+        Request::ScheduleApprovalEviction {} => {
             let orgs_client = aws_sdk_organizations::Client::new(&appstate.sdk_config);
             let mut accounts = traverse_accounts_affected_by_policy(&orgs_client, appstate.control_tags_scp_id);
             let mut affected = vec![];
@@ -89,7 +89,7 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
 
             return Ok(Response::DiscoveredAccounts(affected));
         }
-        Request::EvictStaleApprovals(account_id) => {
+        Request::EvictStaleApprovals { account_id } => {
             let role_arn = format!(
                 "arn:aws:iam::{account}:role/{path}{name}",
                 account = &account_id,
@@ -121,7 +121,9 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
 }
 
 async fn schedule_eviction(client: &aws_sdk_lambda::Client, account_id: &str, lambda_arn: &str) -> anyhow::Result<()> {
-    let payload = Request::EvictStaleApprovals(account_id.to_string());
+    let payload = Request::EvictStaleApprovals {
+        account_id: account_id.to_string(),
+    };
 
     let _ = client
         .invoke()
