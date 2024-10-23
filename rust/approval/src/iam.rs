@@ -26,8 +26,6 @@ pub enum ListAllTicketsError {
 pub enum ListTicketsError {
     #[error("cannot list tickets: {0:?}")]
     InternalError(#[from] anyhow::Error),
-    #[error("principal {0} was not included in the response")]
-    MissingPrincipal(NamedIamPrincipal),
 }
 
 #[derive(Error, Debug)]
@@ -109,20 +107,16 @@ impl ApprovalManager for RoleApprovalManager {
     }
 
     async fn get_ticket(&self, principal: &NamedIamPrincipal) -> Result<Option<ApprovalTicket>, ListTicketsError> {
-        let role = self
+        let tags = self
             .iam
-            .get_role()
+            .list_role_tags()
             .role_name(principal)
             .send()
             .await
             .map_err(|e| ListTicketsError::InternalError(e.into()))?
-            .role;
+            .tags;
 
-        let Some(role) = role else {
-            return Err(ListTicketsError::MissingPrincipal(principal.into()));
-        };
-
-        let ticket = role.tags().iter().find_map(|t| ApprovalTicket::try_from(t).ok());
+        let ticket = tags.iter().find_map(|t| ApprovalTicket::try_from(t).ok());
 
         Ok(ticket)
     }
@@ -179,20 +173,16 @@ impl ApprovalManager for UserApprovalManager {
     }
 
     async fn get_ticket(&self, principal: &NamedIamPrincipal) -> Result<Option<ApprovalTicket>, ListTicketsError> {
-        let user = self
+        let tags = self
             .iam
-            .get_user()
+            .list_user_tags()
             .user_name(principal)
             .send()
             .await
             .map_err(|e| ListTicketsError::InternalError(e.into()))?
-            .user;
+            .tags;
 
-        let Some(user) = user else {
-            return Err(ListTicketsError::MissingPrincipal(principal.clone()));
-        };
-
-        let ticket = user.tags().iter().find_map(|t| ApprovalTicket::try_from(t).ok());
+        let ticket = tags.iter().find_map(|t| ApprovalTicket::try_from(t).ok());
 
         Ok(ticket)
     }
