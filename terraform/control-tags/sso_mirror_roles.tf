@@ -39,7 +39,7 @@ locals {
 resource "aws_cloudformation_stack_set" "mirror_role" {
   for_each = local.filtered_permission_sets
 
-  name             = "controltags-mirror-role-${each.value.name}"
+  name             = "tagctl-mirror-role-${each.value.name}"
   permission_model = "SERVICE_MANAGED"
   auto_deployment {
     enabled                          = true

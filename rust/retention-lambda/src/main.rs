@@ -50,7 +50,7 @@ async fn main() -> Result<(), Error> {
 
 async fn init_appstate() -> anyhow::Result<AppState> {
     let ttl = var("MAX_TICKET_TTL_SECONDS")
-        .context("missing env var")?
+        .context("MAX_TICKET_TTL_SECONDS")?
         .parse()
         .ok()
         .filter(|&x| x > 0)
@@ -58,9 +58,12 @@ async fn init_appstate() -> anyhow::Result<AppState> {
 
     Ok(AppState {
         sdk_config: aws_config::load_defaults(BehaviorVersion::latest()).await,
-        role_name: var("UNTAGGER_ROLE_NAME").context("missing env var")?,
-        role_path: var("UNTAGGER_ROLE_PATH").context("missing env var")?,
-        control_tags_scp_id: var("CONTROL_TAGS_SCP_ID").context("missing env var")?,
+        role_name: var("WORKER_ROLE_NAME").context("WORKER_ROLE_NAME")?,
+        role_path: var("WORKER_ROLE_PATH")
+            .context("WORKER_ROLE_PATH")?
+            .trim_matches('/')
+            .to_owned(),
+        control_tags_scp_id: var("CONTROL_TAGS_SCP_ID").context("CONTROL_TAGS_SCP_ID")?,
         max_ticket_ttl_seconds: Duration::seconds(ttl),
     })
 }
@@ -91,7 +94,7 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
         }
         Request::EvictStaleApprovals { account_id } => {
             let role_arn = format!(
-                "arn:aws:iam::{account}:role/{path}{name}",
+                "arn:aws:iam::{account}:role/{path}/{name}",
                 account = &account_id,
                 path = appstate.role_path,
                 name = appstate.role_name,

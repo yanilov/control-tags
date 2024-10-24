@@ -48,3 +48,45 @@ variable "emit_scp_sids" {
     error_message = "The emit_scp_sids must be one of 'short', 'long', or 'none'."
   }
 }
+
+variable "max_ticket_ttl_seconds" {
+  default     = 4 * 3600
+  description = "The maximum approval ticket TTL in seconds."
+  type        = number
+
+  validation {
+    condition     = var.max_ticket_ttl_seconds > 0
+    error_message = "The max_ticket_ttl_seconds must be greater than 0."
+  }
+}
+
+variable "lambda_archive_file" {
+  description = "The path to the lambda archive file."
+  type        = string
+  validation {
+    condition     = fileexists(var.lambda_archive_file)
+    error_message = "The lambda archive file must exist."
+  }
+}
+
+variable "lambda_timetout_seconds" {
+  default     = 5
+  description = "The timeout in seconds for the lambda function."
+  type        = number
+
+  validation {
+    condition     = var.lambda_timetout_seconds > 0
+    error_message = "The lambda_timetout_seconds must be greater than 0."
+  }
+}
+
+variable "lambda_scheduler_rate_minutes" {
+  default     = 30
+  description = "The rate in minutes at which the lambda function should be scheduled."
+  type        = number
+
+  validation {
+    condition     = var.lambda_scheduler_rate_minutes > 0
+    error_message = "The lambda_scheduler_rate_minutes must be greater than 0."
+  }
+}
