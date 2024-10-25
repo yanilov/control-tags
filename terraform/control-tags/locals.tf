@@ -17,6 +17,10 @@ locals {
 
 }
 
+locals {
+  account_id = data.aws_caller_identity.main.account_id
+}
+
 # dynamically shaped
 locals {
   dyn_deployment_targets = { for target_type, targets in var.deployment_targets : target_type => targets if length(targets) > 0 }

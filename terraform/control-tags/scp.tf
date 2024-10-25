@@ -167,9 +167,9 @@ data "aws_iam_policy_document" "multiparty_approval" {
   statement {
     sid    = local.sids.anti_non_human
     effect = "Deny"
-    #todo: originally actions = ["iam:Tag*"]. is * too restrictive? it could pave the way for resource-based approvals
-    actions   = ["*"]
-    resources = ["*"]
+    # unsetting a ticket is allowed (but goverened by control tags)
+    not_actions = ["iam:Untag*"]
+    resources   = ["*"]
     condition {
       test     = "ForAnyValue:StringLike"
       variable = "aws:TagKeys"

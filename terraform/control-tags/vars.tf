@@ -8,14 +8,6 @@ variable "well_known_tag_keys" {
   type = list(string)
 }
 
-variable "using_delegated_admin_account" {
-  default     = false
-  description = <<-EOT
-    set this to true if you'd like to apply this module from a delegated administrator account for SCPs.
-    false by default which requires this module to be installed from the management (master) account.
-  EOT
-}
-
 variable "deployment_targets" {
   default     = { organizational_unit_ids = [], account_ids = [] }
   description = <<-EOT
@@ -54,5 +46,47 @@ variable "emit_scp_sids" {
   validation {
     condition     = contains(["short", "long", "none"], var.emit_scp_sids)
     error_message = "The emit_scp_sids must be one of 'short', 'long', or 'none'."
+  }
+}
+
+variable "max_ticket_ttl_seconds" {
+  default     = 4 * 3600
+  description = "The maximum approval ticket TTL in seconds."
+  type        = number
+
+  validation {
+    condition     = var.max_ticket_ttl_seconds > 0
+    error_message = "The max_ticket_ttl_seconds must be greater than 0."
+  }
+}
+
+variable "lambda_archive_file" {
+  description = "The path to the lambda archive file."
+  type        = string
+  validation {
+    condition     = fileexists(var.lambda_archive_file)
+    error_message = "The lambda archive file must exist."
+  }
+}
+
+variable "lambda_timetout_seconds" {
+  default     = 5
+  description = "The timeout in seconds for the lambda function."
+  type        = number
+
+  validation {
+    condition     = var.lambda_timetout_seconds > 0
+    error_message = "The lambda_timetout_seconds must be greater than 0."
+  }
+}
+
+variable "lambda_scheduler_rate_minutes" {
+  default     = 30
+  description = "The rate in minutes at which the lambda function should be scheduled."
+  type        = number
+
+  validation {
+    condition     = var.lambda_scheduler_rate_minutes > 0
+    error_message = "The lambda_scheduler_rate_minutes must be greater than 0."
   }
 }

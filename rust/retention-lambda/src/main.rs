@@ -17,8 +17,8 @@ use std::{env::var, sync::Arc};
 
 #[derive(Serialize, Deserialize)]
 enum Request {
-    ScheduleApprovalEviction,
-    EvictStaleApprovals(String),
+    ScheduleApprovalEviction {},
+    EvictStaleApprovals { account_id: String },
 }
 
 #[derive(Serialize)]
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Error> {
 
 async fn init_appstate() -> anyhow::Result<AppState> {
     let ttl = var("MAX_TICKET_TTL_SECONDS")
-        .context("missing env var")?
+        .context("MAX_TICKET_TTL_SECONDS")?
         .parse()
         .ok()
         .filter(|&x| x > 0)
@@ -58,9 +58,12 @@ async fn init_appstate() -> anyhow::Result<AppState> {
 
     Ok(AppState {
         sdk_config: aws_config::load_defaults(BehaviorVersion::latest()).await,
-        role_name: var("UNTAGGER_ROLE_NAME").context("missing env var")?,
-        role_path: var("UNTAGGER_ROLE_PATH").context("missing env var")?,
-        control_tags_scp_id: var("CONTROL_TAGS_SCP_ID").context("missing env var")?,
+        role_name: var("WORKER_ROLE_NAME").context("WORKER_ROLE_NAME")?,
+        role_path: var("WORKER_ROLE_PATH")
+            .context("WORKER_ROLE_PATH")?
+            .trim_matches('/')
+            .to_owned(),
+        control_tags_scp_id: var("CONTROL_TAGS_SCP_ID").context("CONTROL_TAGS_SCP_ID")?,
         max_ticket_ttl_seconds: Duration::seconds(ttl),
     })
 }
@@ -68,7 +71,7 @@ async fn init_appstate() -> anyhow::Result<AppState> {
 pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Response, Error> {
     let appstate = init_appstate().await?;
     match event.payload {
-        Request::ScheduleApprovalEviction => {
+        Request::ScheduleApprovalEviction {} => {
             let orgs_client = aws_sdk_organizations::Client::new(&appstate.sdk_config);
             let mut accounts = traverse_accounts_affected_by_policy(&orgs_client, appstate.control_tags_scp_id);
             let mut affected = vec![];
@@ -89,9 +92,9 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
 
             return Ok(Response::DiscoveredAccounts(affected));
         }
-        Request::EvictStaleApprovals(account_id) => {
+        Request::EvictStaleApprovals { account_id } => {
             let role_arn = format!(
-                "arn:aws:iam::{account}:role/{path}{name}",
+                "arn:aws:iam::{account}:role/{path}/{name}",
                 account = &account_id,
                 path = appstate.role_path,
                 name = appstate.role_name,
@@ -121,7 +124,9 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
 }
 
 async fn schedule_eviction(client: &aws_sdk_lambda::Client, account_id: &str, lambda_arn: &str) -> anyhow::Result<()> {
-    let payload = Request::EvictStaleApprovals(account_id.to_string());
+    let payload = Request::EvictStaleApprovals {
+        account_id: account_id.to_string(),
+    };
 
     let _ = client
         .invoke()
