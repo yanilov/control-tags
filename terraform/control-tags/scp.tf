@@ -185,7 +185,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
   statement {
     sid    = local.sids.anti_reflexive
     effect = "Deny"
-    #todo: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
+    #note: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
     actions   = ["*"]
     resources = ["*"]
     condition {
@@ -205,7 +205,7 @@ data "aws_iam_policy_document" "multiparty_approval" {
   statement {
     sid    = local.sids.anti_forge
     effect = "Deny"
-    #todo: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
+    #note: originally actions = ["iam:TagUser", "iam:CreateUser", "iam:TagRole", "iam:CreateRole"]. is * too restrictive? it could pave the way for resource-based approvals
     actions   = ["*"]
     resources = ["*"]
     #a the request attempts to tag an approval ticket
@@ -337,7 +337,6 @@ data "aws_iam_policy_document" "unified" {
       data.aws_iam_policy_document.multiparty_approval.json,
       data.aws_iam_policy_document.trusted_stacksets_exec.json,
       data.aws_iam_policy_document.resource_seals_core.json,
-      #data.aws_iam_policy_document.resource_seals_kinds.json
     ],
     [for _, doc in data.aws_iam_policy_document.resource_seals_kinds : doc.json]
   )
