@@ -90,3 +90,14 @@ variable "lambda_scheduler_rate_minutes" {
     error_message = "The lambda_scheduler_rate_minutes must be greater than 0."
   }
 }
+
+variable "lambda_log_retention_in_days" {
+  default     = 7
+  description = "The number of days to retain the logs for the lambda function. defaults to 7 days. specify 0 to retain indefinitely."
+  type        = number
+
+  validation {
+    condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.lambda_log_retention_in_days)
+    error_message = "The lambda_log_retention must be one of 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653."
+  }
+}

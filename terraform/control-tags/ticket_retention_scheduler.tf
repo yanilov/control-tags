@@ -42,7 +42,6 @@ resource "aws_iam_role_policy" "retention_scheduler" {
   })
 }
 
-
 resource "aws_scheduler_schedule" "retention" {
   name        = local.retention_name_base
   description = "A schedule to run the ticket retention lambda"

@@ -12,7 +12,7 @@ locals {
 
 resource "aws_cloudwatch_log_group" "retention_lambda" {
   name              = local.retention_lambda_log_group
-  retention_in_days = 14
+  retention_in_days = var.lambda_log_retention_in_days
 }
 
 # allows the lambda to write logs to CloudWatch
