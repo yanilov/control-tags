@@ -20,22 +20,25 @@ use tokio;
 #[command()]
 struct Cli {
     #[command(subcommand)]
-    command: Option<RootCommand>,
+    command: RootCommand,
 }
 
 #[derive(Subcommand)]
 enum RootCommand {
+    /// Manage approval tickets for IAM principals.
     Ticket(TicketArgs),
+    /// Interact with mirror roles as an AWS SSO-managed IAM principal.
     Mirror(MirrorArgs),
 }
 
 #[derive(Args)]
 #[command(about)]
 struct TicketArgs {
+    /// the AWS profile to use for the operation
     #[arg(long, global = true)]
     profile: Option<String>,
 
-    /// The name of the role to manage. Default to the calling principal's role.
+    /// The name of the role to manage. Default to the calling principal's name.
     #[arg(long, global = true)]
     role_name: Option<String>,
 
@@ -45,19 +48,23 @@ struct TicketArgs {
 
 #[derive(Subcommand)]
 enum TicketCommand {
-    List {},
+    /// gets the approval ticket on the selected principal
+    Get {},
+    /// sets an approval ticket on the principal
     Set {
         receiver: String,
         #[cfg(feature = "chainable")]
         #[cfg_attr(feature = "chainable", arg(long, default_value_t = false))]
         chain: bool,
     },
+    /// unsets an approval ticket on the principal
     Unset {},
 }
 
 #[derive(Args)]
 #[command(about)]
 struct MirrorArgs {
+    /// the AWS profile to use for the operation
     #[arg(long, global = true)]
     profile: Option<String>,
 
@@ -67,6 +74,7 @@ struct MirrorArgs {
 
 #[derive(Subcommand)]
 enum MirrorCommand {
+    /// Assumes the SSO mirror role for the current principal
     Assume {},
 }
 
@@ -74,12 +82,7 @@ enum MirrorCommand {
 async fn main() {
     let program = Cli::parse();
 
-    let Some(command) = program.command else {
-        eprintln!("No command provided");
-        return;
-    };
-
-    match command {
+    match program.command {
         RootCommand::Ticket(args) => match handle_ticket_commands(args).await {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {:#}", e),
@@ -118,7 +121,7 @@ async fn handle_ticket_commands(args: TicketArgs) -> anyhow::Result<()> {
     };
 
     match args.command {
-        TicketCommand::List {} => match manager.get_ticket(&role_name.0).await {
+        TicketCommand::Get {} => match manager.get_ticket(&role_name.0).await {
             Ok(ticket) => {
                 println!("Ticket: {:#?}", ticket);
             }
