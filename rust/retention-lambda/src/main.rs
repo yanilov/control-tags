@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use approval::{self, iam::ApprovalManager, ticket::ApprovalTicket};
 use async_stream::try_stream;
 use aws_config::{sts::AssumeRoleProviderBuilder, BehaviorVersion};
@@ -151,26 +151,22 @@ async fn evict_invalid_tickets<T: ApprovalManager>(
 ) -> anyhow::Result<Vec<(String, ApprovalTicket)>> {
     let evicted = manager
         .list_all_tickets()
-        .map_err(|e| anyhow!(e))
-        .try_filter_map(|(principal, ticket)| async {
-            if is_evictable(&ticket, max_ttl) {
-                Ok(Some((principal, ticket)))
-            } else {
-                Ok(None)
+        .inspect_err(|e| tracing::error!(msg = "listing account tickets", error = %e))
+        .filter_map(|result| async {
+            match result {
+                Ok((principal, ticket)) if is_evictable(&ticket, max_ttl) => Some((principal, ticket)),
+                _ => None,
             }
         })
-        .map(|result| async {
-            match result {
-                Ok((principal, ticket)) => {
-                    manager.unset_ticket(&principal).await.map_err(|e| anyhow!(e))?;
-                    Ok((principal, ticket))
-                }
-                Err(e) => Err(e),
-            }
+        .map(|(principal, ticket)| async {
+            if let Err(e) = manager.unset_ticket(&principal).await {
+                tracing::error!(msg = "unset ticket", error = %e, principal = %principal, ticket = ?ticket)
+            };
+            (principal, ticket)
         })
         .buffer_unordered(4)
-        .try_collect()
-        .await?;
+        .collect()
+        .await;
 
     Ok(evicted)
 }
