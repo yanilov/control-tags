@@ -15,8 +15,8 @@ variable "deployment_targets" {
     The values are lists of strings representing the target IDs.
   EOT
   type = object({
-    organizational_unit_ids = list(string)
-    account_ids             = list(string)
+    organizational_unit_ids = optional(list(string))
+    account_ids             = optional(list(string))
   })
 }
 
@@ -99,5 +99,35 @@ variable "lambda_log_retention_in_days" {
   validation {
     condition     = contains([0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653], var.lambda_log_retention_in_days)
     error_message = "The lambda_log_retention must be one of 0, 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653."
+  }
+}
+
+variable "guarded_action_spec" {
+  description = <<-EOT
+    a map of action sets to protect under control tags. each key will produce a separate scp.
+    action wildcards support is the same as AWS IAM policy actions.
+  EOT
+  default     = {}
+  type = map(object({
+    actions = list(string)
+    deployment_targets = optional(object({
+      organizational_unit_ids = optional(list(string))
+      account_ids             = optional(list(string))
+    }))
+  }))
+
+  validation {
+    condition     = alltrue([for spec in values(var.guarded_action_spec) : length(spec.actions) > 0])
+    error_message = "Ech spec must contain at least one action."
+  }
+
+  validation {
+    condition     = alltrue([for k in keys(var.guarded_action_spec) : k != "" && k != null])
+    error_message = "The keys cannot be null or empty."
+  }
+
+  validation {
+    condition     = alltrue([for spec in values(var.guarded_action_spec) : length(values(spec.deployment_targets)) > 0 if spec.deployment_targets != null])
+    error_message = "Each spec must contain at least one deployment target."
   }
 }
