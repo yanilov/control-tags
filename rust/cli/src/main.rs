@@ -1,4 +1,3 @@
-mod config;
 mod types;
 
 use anyhow::{bail, Context};
@@ -12,19 +11,14 @@ use aws_config::BehaviorVersion;
 use aws_sdk_iam::config::SharedCredentialsProvider;
 
 use clap::{Args, Parser, Subcommand};
-use config::Configuration;
 
 use serde_json;
-use std::{cmp::min, path::PathBuf, sync::Arc};
+use std::{cmp::min, sync::Arc};
 use tokio;
 
 #[derive(Parser)]
 #[command()]
 struct Cli {
-    /// Sets a custom config file
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<PathBuf>,
-
     #[command(subcommand)]
     command: Option<RootCommand>,
 }
@@ -85,21 +79,19 @@ async fn main() {
         return;
     };
 
-    let config = Configuration::load(program.config);
-
     match command {
-        RootCommand::Ticket(args) => match handle_ticket_commands(&config, args).await {
+        RootCommand::Ticket(args) => match handle_ticket_commands(args).await {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {:#}", e),
         },
-        RootCommand::Mirror(args) => match handle_mirror_commands(&config, args).await {
+        RootCommand::Mirror(args) => match handle_mirror_commands(args).await {
             Ok(_) => {}
             Err(e) => eprintln!("Error: {:#}", e),
         },
     };
 }
 
-async fn handle_ticket_commands(_app_config: &Configuration, args: TicketArgs) -> anyhow::Result<()> {
+async fn handle_ticket_commands(args: TicketArgs) -> anyhow::Result<()> {
     let mut sdk_config = aws_config::load_defaults(BehaviorVersion::latest()).await;
 
     if let Some(profile) = args.profile {
@@ -170,7 +162,7 @@ async fn handle_ticket_commands(_app_config: &Configuration, args: TicketArgs) -
 const SSO_ROLE_PATH_PREFIX: &str = "/aws-reserved/sso.amazonaws.com/";
 const MIRROR_ROLE_NAME_PREFIX: &str = "tagctl-mirror-";
 
-async fn handle_mirror_commands(_app_config: &Configuration, args: MirrorArgs) -> anyhow::Result<()> {
+async fn handle_mirror_commands(args: MirrorArgs) -> anyhow::Result<()> {
     let mut sdk_config = aws_config::load_defaults(BehaviorVersion::latest()).await;
 
     if let Some(profile) = args.profile {
