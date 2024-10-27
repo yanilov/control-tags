@@ -130,7 +130,6 @@ impl ApprovalManager for RoleApprovalManager {
             .tags(tag)
             .send()
             .await
-            //.inspect_err(|e| eprintln!("{:?}", e))
             .map_err(|e| SetTicketError::InternalError(e.into()))?;
         Ok(())
     }

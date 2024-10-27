@@ -72,6 +72,7 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
     let appstate = init_appstate().await?;
     match event.payload {
         Request::ScheduleApprovalEviction {} => {
+            tracing::info!("scheduling eviction of approval tickets");
             let orgs_client = aws_sdk_organizations::Client::new(&appstate.sdk_config);
             let mut accounts = traverse_accounts_affected_by_policy(&orgs_client, appstate.control_tags_scp_id);
             let mut affected = vec![];
@@ -81,11 +82,15 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
             while let Some(x) = accounts.next().await {
                 match x {
                     Ok(account_id) => {
-                        schedule_eviction(&lambda_client, &account_id, &lambda_arn).await?;
+                        tracing::debug!(msg = "scheduling eviction", account_id = %account_id);
+                        if let Err(e) = schedule_eviction(&lambda_client, &account_id, &lambda_arn).await {
+                            tracing::error!(msg = "scheduling eviction", account_id = %account_id, error = %e);
+                            continue;
+                        }
                         affected.push(account_id);
                     }
                     Err(e) => {
-                        eprintln!("Error: {:?}", e);
+                        tracing::error!(msg = "traversing accounts", error = %e);
                     }
                 }
             }
@@ -212,7 +217,7 @@ fn traverse_accounts_affected_by_policy<'a>(
                     traverse_account_tree(client, target_id).boxed()
                 }
                 _ => {
-                    eprintln!("Unknown target type for target: {:?}", target_id);
+                    tracing::warn!(msg = "Unknown target type", target_id =% target_id);
                     stream::empty().boxed()
                 }
             }
