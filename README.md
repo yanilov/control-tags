@@ -214,3 +214,9 @@ tagctl mirror assume
 
 *note:* the `tagctl mirror assume` command will produce temporary credentials to stdout,\
 to export them as env vars in the current shell, use a script like [this](https://stackoverflow.com/questions/65880727/bash-script-for-aws-assume-role)
+
+
+### Testing
+WIP
+ 😅
+👉👈
