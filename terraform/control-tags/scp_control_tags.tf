@@ -151,6 +151,11 @@ data "aws_iam_policy_document" "multiparty_approval" {
     actions   = ["sts:AssumeRole*"]
     resources = ["*"]
     condition {
+      test     = "Null"
+      variable = "sts:SourceIdentity"
+      values   = ["false"]
+    }
+    condition {
       test     = "StringNotLikeIfExists"
       variable = "aws:userid"
       # sso principal must set its session name as source identity,
