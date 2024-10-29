@@ -3,7 +3,7 @@
 Scalable integrity framework for ABAC on AWS
 
 ## Features
-----
+
 * Centralized, hierarchical management of tagging integrity for Attribute-Based Access Control (ABAC) on AWS
 * Multi-party approval
   * for sensitive actions (guarded actions)
