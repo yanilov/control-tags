@@ -19,11 +19,27 @@ Scalable integrity framework for ABAC on AWS
 
 ### Prerequisites
 
+#### AWS SSO-based setups
+
+When using AWS Identity Center (AWS SSO), you will need
+
 1. AWS organization with:
     1. ["all features"](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_getting-started_concepts.html#feature-set-all) enabled
     2. Trusted access for [AWS Identity Center (SSO)](https://docs.aws.amazon.com/singlesignon/latest/userguide/getting-started.html) enabled
     3. Trusted access for [Stacksets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-orgs-activate-trusted-access.html) enabled
+   4.[SCP](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)s enabled
 2. Two or more humans with "admin-ish" roles (SecOps/SRE/etc) in the organization.
+
+#### Non AWS-SSO setups 
+
+in a non-SSO setup you'd typically have an external IdP (Okta, Jumpcloud) set up directly against an IAM Identy Provider in one or more accounts.
+
+For this setup, you'll not be needing trust access for AWS SSO prerequisite, but you will be needing the following:
+
+* pass an `aws:sourceIdentity` inside the SAML Assertion or OIDC claim.
+* explicitly tag humans'IAM principals with the `tagctl:v1/meta/grant_path` tag, taking care that the value for the tag must be `tagctl:v1/admin` for the IAM principal to be able to set or unset multiparty approval tickets.
+
+*note:* In a non-SSO setup you do not have need for mirror roles, as the IAM principals assumed by the IAM identity provider can be tagged.
 
 ### Dependencies
 
