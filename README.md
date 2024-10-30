@@ -59,6 +59,7 @@ run this make command to build the CLI from source
 ```sh
 make build-cli
 ```
+
 The output binary will be located at `./target/release/tagctl`
 
 (Optional) Publish the binary to `/usr/local/bin` so it's in your path
@@ -131,7 +132,6 @@ module "control_tags" {
 ### Help
 Display help for various commands
 
-```sh
 ```sh
 tagctl -h
 ```
