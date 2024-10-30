@@ -2,6 +2,9 @@
 
 Scalable integrity framework for ABAC on AWS
 
+> [!CAUTION]
+> This project is in early development, exercise caution when using in production, and expect breaking changes.
+
 ## Features
 
 * Centralized, hierarchical management of tagging integrity for Attribute-Based Access Control (ABAC) on AWS
@@ -30,7 +33,7 @@ When using AWS Identity Center (AWS SSO), you will need
     4. [SCP](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html)s enabled
 2. Two or more humans with "admin-ish" roles (SecOps/SRE/etc) in the organization.
 
-#### Non AWS-SSO setups 
+#### Non AWS-SSO setups
 
 in a non-SSO setup you'd typically have an external IdP (Okta, Jumpcloud) set up directly against an IAM Identy Provider in one or more accounts.
 
