@@ -106,9 +106,6 @@ module "control_tags" {
     "${aws_ssoadmin_permission_set.admin.arn}" = {
       grant_area_suffix = "admin"
     }
-    "${aws_ssoadmin_permission_set.admin_tagger.arn}" = {
-      grant_area_suffix = "admin"
-    }
   }
   emit_scp_sids = "long"
 
