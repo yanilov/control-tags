@@ -86,7 +86,7 @@ well-known tags can be applied together with the control tags in automated conte
 (This step is mandatory in order to enable multi-party approval via the `tagctl ticket set` command).\
 **Caveat:** make sure there's at least one permissionset that has `grant_area_suffix = "admin"` - it is required in order to apply mulit-party approval,\
 as the approval ticket is *currently* an admin-only feature.
-4. Conigure the `lambda_archive_file` to point to the location of the `bootstrap.zip` archive.
+4. Configure the `lambda_archive_file` to point to the location of the `bootstrap.zip` archive.
 5. (Optional) Configure the `guarded_action_spec` to define sensitive actions that require multi-party approval.
 
 
