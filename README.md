@@ -40,7 +40,7 @@ in a non-SSO setup you'd typically have an external IdP (Okta, Jumpcloud) set up
 For this setup, you'll not be needing trust access for AWS SSO prerequisite, but you will be needing the following:
 
 * pass an `aws:sourceIdentity` inside the SAML Assertion or OIDC claim.
-* explicitly tag humans'IAM principals with the `tagctl:v1/meta/grant_path` tag, taking care that the value for the tag must be `tagctl:v1/admin` for the IAM principal to be able to set or unset multiparty approval tickets.
+* explicitly tag humans' IAM principals with the `tagctl:v1/meta/grant_path` tag, taking care that the value for the tag must be `tagctl:v1/admin` for the IAM principal to be able to set or unset multiparty approval tickets.
 
 *note:* In a non-SSO setup you do not have need for mirror roles, as the IAM principals assumed by the IAM identity provider can be tagged.
 
@@ -141,7 +141,7 @@ Get the ticket for the current AWS principal
 tagctl ticket get
 ```
 
-Set the ticket for the the named human identity `bob` on the the role named `myrole`
+Get the ticket for the the role named `myrole`
 
 ```sh
 tagctl ticket get --role-name myrole
