@@ -78,6 +78,33 @@ data "aws_iam_policy_document" "resource_seals_kinds" {
   }
 }
 
+data "aws_iam_policy_document" "resource_seals_org_access" {
+  statement {
+    sid       = local.sids.seal_principal_outside_target
+    effect    = "Deny"
+    actions   = ["*"]
+    resources = ["*"]
+    # reousce seal exists
+    condition {
+      test     = "Null"
+      variable = "aws:ResourceTag/${local.resource_seal_grant_tag_key}"
+      values   = ["false"]
+    }
+    # principal acccount is not any of the deployment target accounts
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:PrincipalAccount"
+      values   = var.deployment_targets.account_ids
+    }
+    # principal org path does not contain the any of the deployment target OUs
+    condition {
+      test     = "ForAllValues:StringNotLike"
+      variable = "aws:PrincipalOrgPaths"
+      values   = [for ou_id in var.deployment_targets.organizational_unit_ids : "*/${ou_id}/*"]
+    }
+  }
+}
+
 
 data "aws_iam_policy_document" "unified_mpa_seals" {
   source_policy_documents = concat(
