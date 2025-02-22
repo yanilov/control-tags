@@ -1,18 +1,31 @@
 locals {
+  rcp_supported_actions = [
+    "s3:*",
+    "sqs:*",
+    "sts:*",
+    "kms:*",
+    "secretsmanager:*"
+  ]
   builtin_resource_seal_kinds = {
     secret = {
-      sid     = "ctrskb0"
-      actions = ["*"]
-      not_actions = [
-        "secretsmanager:Describe*", "secretsmanager:Get*", "secretsmanager:List*",
-        "kms:Describe*", "kms:Get*",
-        "ssm:Get*", "ssm:Describe*"
+      sid = "ctrskb0"
+      actions = [
+        "secretsmanager:*",
+        "kms:*"
+      ]
+      resources = [
+        "arn:aws:secretsmanager:*:*:secret/*",
+        "arn:aws:kms:*:*:key/*",
+        "arn:aws:kms:*:*:alias/*"
       ]
     }
     trust_relay = {
-      sid         = "ctrskb1"
-      not_actions = ["iam:Get*", "iam:List*", "iam:Generate*", "iam:Simulate*", "sts:*"]
-      resources   = []
+      sid = "ctrskb1"
+      actions = [
+        "sts:Assume*",
+        "sts:GetFederationToken"
+      ]
+      resources = ["*"]
     }
   }
 }
@@ -20,9 +33,13 @@ locals {
 data "aws_iam_policy_document" "resource_seals_core" {
   # deny seal-breaing requests(tag/untag), unless the principal has approval
   statement {
-    sid       = local.sids.seal_op_no_approval
-    effect    = "Deny"
-    actions   = ["*"]
+    sid    = local.sids.seal_op_no_approval
+    effect = "Deny"
+    principals {
+      identifiers = ["*"]
+      type        = "*"
+    }
+    actions   = local.rcp_supported_actions
     resources = ["*"]
     # request involves tagging/untagging
     condition {
@@ -40,9 +57,13 @@ data "aws_iam_policy_document" "resource_seals_core" {
   }
   # deny sealing with a grant outside the principal's grant area
   statement {
-    sid       = local.sids.seal_op_outside_grant
-    effect    = "Deny"
-    actions   = ["*"]
+    sid    = local.sids.seal_op_outside_grant
+    effect = "Deny"
+    principals {
+      identifiers = ["*"]
+      type        = "*"
+    }
+    actions   = local.rcp_supported_actions
     resources = ["*"]
     condition {
       test     = "Null"
@@ -64,11 +85,14 @@ data "aws_iam_policy_document" "resource_seals_core" {
 data "aws_iam_policy_document" "resource_seals_kinds" {
   for_each = local.builtin_resource_seal_kinds
   statement {
-    sid         = each.value.sid
-    effect      = "Deny"
-    actions     = try(each.value.actions, null)
-    not_actions = try(each.value.not_actions, null)
-    resources   = ["*"]
+    sid    = each.value.sid
+    effect = "Deny"
+    principals {
+      identifiers = ["*"]
+      type        = "*"
+    }
+    actions   = each.value.actions
+    resources = each.value.resources
     condition {
       test     = "StringEquals"
       variable = "aws:ResourceTag/${local.resource_seal_kind_tag_key}"
@@ -86,9 +110,13 @@ data "aws_iam_policy_document" "resource_seals_kinds" {
 
 data "aws_iam_policy_document" "resource_seals_org_access" {
   statement {
-    sid       = local.sids.seal_principal_outside_target
-    effect    = "Deny"
-    actions   = ["*"]
+    sid    = local.sids.seal_principal_outside_target
+    effect = "Deny"
+    principals {
+      identifiers = ["*"]
+      type        = "*"
+    }
+    actions   = local.rcp_supported_actions
     resources = ["*"]
     # reousce seal exists
     condition {
@@ -97,16 +125,22 @@ data "aws_iam_policy_document" "resource_seals_org_access" {
       values   = ["false"]
     }
     # principal acccount is not any of the deployment target accounts
-    condition {
-      test     = "StringNotEquals"
-      variable = "aws:PrincipalAccount"
-      values   = var.deployment_targets.account_ids
+    dynamic "condition" {
+      for_each = try(length(var.deployment_targets.account_ids) > 0, false) ? [1] : []
+      content {
+        test     = "StringNotEquals"
+        variable = "aws:PrincipalAccount"
+        values   = var.deployment_targets.account_ids
+      }
     }
     # principal org path does not contain the any of the deployment target OUs
-    condition {
-      test     = "ForAllValues:StringNotLike"
-      variable = "aws:PrincipalOrgPaths"
-      values   = [for ou_id in var.deployment_targets.organizational_unit_ids : "*/${ou_id}/*"]
+    dynamic "condition" {
+      for_each = try(length(var.deployment_targets.organizational_unit_ids) > 0, false) ? [1] : []
+      content {
+        test     = "ForAllValues:StringNotLike"
+        variable = "aws:PrincipalOrgPaths"
+        values   = [for ou_id in var.deployment_targets.organizational_unit_ids : "*/${ou_id}/*"]
+      }
     }
   }
 }
@@ -116,6 +150,7 @@ data "aws_iam_policy_document" "unified_mpa_seals" {
   source_policy_documents = concat(
     [
       data.aws_iam_policy_document.resource_seals_core.json,
+      data.aws_iam_policy_document.resource_seals_org_access.json
     ],
     [for _, doc in data.aws_iam_policy_document.resource_seals_kinds : doc.json]
   )
