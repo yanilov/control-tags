@@ -14,29 +14,6 @@ locals {
   human_identity_tag_keys = [
     "aws:SourceIdentity",
   ]
-
-  sids_map = {
-    ctl_no_grant             = "CT00"
-    ctl_outside_grant        = "CT01"
-    ctl_lookalike            = "CT02"
-    anti_invalid_identity    = "CT03"
-    anti_impersonate_non_sso = "CT04"
-    anti_impersonate_sso     = "CT05"
-    anti_non_human           = "CT06"
-    anti_reflexive           = "CT07"
-    anti_forge               = "CT08"
-
-    seal_op_no_approval           = "CTRS0"
-    seal_op_outside_grant         = "CTRS1"
-    seal_principal_outside_target = "CTRS2"
-  }
-
-  sid_selector = {
-    short = local.sids_map
-    long  = { for k, v in local.sids_map : k => replace(title(replace(k, "_", " ")), " ", "") }
-    none  = { for k, v in local.sids_map : k => null }
-  }
-  sids = local.sid_selector[var.emit_scp_sids]
 }
 
 data "aws_iam_policy_document" "control_tags" {
