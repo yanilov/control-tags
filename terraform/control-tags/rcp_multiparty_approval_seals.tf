@@ -1,12 +1,18 @@
 locals {
   builtin_resource_seal_kinds = {
-    total = {
-      sid     = "CTRSKB0"
+    secret = {
+      sid     = "ctrskb0"
       actions = ["*"]
+      not_actions = [
+        "secretsmanager:Describe*", "secretsmanager:Get*", "secretsmanager:List*",
+        "kms:Describe*", "kms:Get*",
+        "ssm:Get*", "ssm:Describe*"
+      ]
     }
     trust_relay = {
-      sid         = "CTRSKB1"
-      not_actions = ["iam:Get*", "iam:List*", "sts:*"]
+      sid         = "ctrskb1"
+      not_actions = ["iam:Get*", "iam:List*", "iam:Generate*", "iam:Simulate*", "sts:*"]
+      resources   = []
     }
   }
 }
