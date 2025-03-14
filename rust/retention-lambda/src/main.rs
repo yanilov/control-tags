@@ -1,18 +1,16 @@
 use anyhow::{Context, Result};
 use approval::{self, iam::ApprovalManager, ticket::ApprovalTicket};
 use async_stream::try_stream;
-use aws_config::{sts::AssumeRoleProviderBuilder, BehaviorVersion};
-use aws_sdk_iam;
+use aws_config::{BehaviorVersion, sts::AssumeRoleProviderBuilder};
 use aws_sdk_iam::config::SharedCredentialsProvider;
 use aws_sdk_iam::primitives::Blob;
 use aws_sdk_lambda::{self, types::InvocationType};
 use aws_sdk_organizations::types::{ChildType, TargetType};
 use aws_smithy_types_convert::stream::PaginationStreamExt;
 use chrono::Duration;
-use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use lambda_runtime::{service_fn, tracing, Error, LambdaEvent};
+use futures::{Stream, StreamExt, TryStreamExt, future, stream};
+use lambda_runtime::{Error, LambdaEvent, service_fn, tracing};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::{env::var, sync::Arc};
 
 #[derive(Serialize, Deserialize)]
@@ -95,7 +93,7 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
                 }
             }
 
-            return Ok(Response::DiscoveredAccounts(affected));
+            Ok(Response::DiscoveredAccounts(affected))
         }
         Request::EvictStaleApprovals { account_id } => {
             let role_arn = format!(
@@ -120,10 +118,10 @@ pub(crate) async fn my_handler(event: LambdaEvent<Request>) -> anyhow::Result<Re
             let roles_tickets_fut = evict_invalid_tickets(role_manager, appstate.max_ticket_ttl_seconds);
 
             let (users_tickets, roles_tickets) = future::try_join(users_tickets_fut, roles_tickets_fut).await?;
-            return Ok(Response::EvictionSummary {
+            Ok(Response::EvictionSummary {
                 users: users_tickets,
                 roles: roles_tickets,
-            });
+            })
         }
     }
 }
@@ -180,10 +178,10 @@ fn is_evictable(ticket: &ApprovalTicket, max_ttl: chrono::Duration) -> bool {
     }
 }
 
-fn traverse_accounts_affected_by_policy<'a>(
-    client: &'a aws_sdk_organizations::Client,
+fn traverse_accounts_affected_by_policy(
+    client: &aws_sdk_organizations::Client,
     policy_id: impl Into<String>,
-) -> impl Stream<Item = anyhow::Result<String>> + 'a {
+) -> impl Stream<Item = anyhow::Result<String>> {
     let targets = client
         .list_targets_for_policy()
         .policy_id(policy_id)
@@ -221,10 +219,10 @@ fn traverse_accounts_affected_by_policy<'a>(
         .try_flatten()
 }
 
-fn traverse_account_tree<'a>(
-    client: &'a aws_sdk_organizations::Client,
+fn traverse_account_tree(
+    client: &aws_sdk_organizations::Client,
     target_id: String,
-) -> impl Stream<Item = Result<String, anyhow::Error>> + Send + 'a {
+) -> impl Stream<Item = Result<String, anyhow::Error>> + Send {
     try_stream! {
         let accounts = list_accounts_for_target(client, &target_id);
         for await account in accounts {
@@ -245,7 +243,7 @@ fn list_accounts_for_target(
     client: &aws_sdk_organizations::Client,
     target_id: &str,
 ) -> impl Stream<Item = Result<String, anyhow::Error>> {
-    let child_accounts = client
+    client
         .list_children()
         .parent_id(target_id)
         .child_type(ChildType::Account)
@@ -261,15 +259,14 @@ fn list_accounts_for_target(
                 .map(Ok);
             stream::iter(account_ids)
         })
-        .try_flatten();
-    child_accounts
+        .try_flatten()
 }
 
 fn list_org_units_for_target(
     client: &aws_sdk_organizations::Client,
     target_id: &str,
 ) -> impl Stream<Item = Result<String, anyhow::Error>> {
-    let org_units = client
+    client
         .list_children()
         .parent_id(target_id)
         .child_type(ChildType::OrganizationalUnit)
@@ -285,6 +282,5 @@ fn list_org_units_for_target(
                 .map(Ok);
             stream::iter(ou_ids)
         })
-        .try_flatten();
-    org_units
+        .try_flatten()
 }

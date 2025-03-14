@@ -229,7 +229,7 @@ impl TryFrom<&Tag> for crate::ticket::ApprovalTicket {
 
         tag.value()
             .parse::<ApprovalTicket>()
-            .map_err(|e| TicketBuildError::TagValueParseError(e))
+            .map_err(TicketBuildError::TagValueParseError)
     }
 }
 

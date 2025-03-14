@@ -1,6 +1,6 @@
 mod types;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use approval::{
     self,
     iam::ApprovalManager,
@@ -12,9 +12,7 @@ use aws_sdk_iam::config::SharedCredentialsProvider;
 
 use clap::{Args, Parser, Subcommand};
 
-use serde_json;
 use std::{cmp::min, sync::Arc};
-use tokio;
 
 #[derive(Parser)]
 #[command()]
