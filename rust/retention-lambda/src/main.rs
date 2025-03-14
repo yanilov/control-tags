@@ -150,13 +150,11 @@ async fn evict_invalid_tickets<T: ApprovalManager>(
     let evicted = manager
         .list_all_tickets()
         .inspect_err(|e| tracing::error!(msg = "listing account tickets", error = %e))
-        .filter_map(|result| async {
-            match result {
-                Ok((principal, ticket)) if is_evictable(&ticket, max_ttl) => Some((principal, ticket)),
-                _ => None,
-            }
+        .filter_map(async |result| match result {
+            Ok((principal, ticket)) if is_evictable(&ticket, max_ttl) => Some((principal, ticket)),
+            _ => None,
         })
-        .map(|(principal, ticket)| async {
+        .map(async |(principal, ticket)| {
             if let Err(e) = manager.unset_ticket(&principal).await {
                 tracing::error!(msg = "unset ticket", error = %e, principal = %principal, ticket = ?ticket)
             };

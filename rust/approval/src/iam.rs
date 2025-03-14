@@ -90,7 +90,7 @@ impl ApprovalManager for RoleApprovalManager {
             .send()
             .into_stream_03x()
             .map_err(|e| ListAllTicketsError::InternalError(e.into()))
-            .map_ok(|role| async {
+            .map_ok(async |role| {
                 let ticket = self
                     .get_ticket(&role.role_name)
                     .await
@@ -155,7 +155,7 @@ impl ApprovalManager for UserApprovalManager {
             .send()
             .into_stream_03x()
             .map_err(|e| ListAllTicketsError::InternalError(e.into()))
-            .map_ok(|user| async {
+            .map_ok(async |user| {
                 let ticket = self
                     .get_ticket(&user.user_name)
                     .await
